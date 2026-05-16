@@ -18,9 +18,53 @@
         });
     }
 
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, character => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        })[character]);
+    }
+
+    function renderLibraries(libraries) {
+        const list = page().querySelector('#libraryList');
+        if (!libraries || libraries.length === 0) {
+            list.innerHTML = '<div class="fieldDescription">No libraries found. Exports will include all available libraries.</div>';
+            return;
+        }
+
+        list.innerHTML = libraries.map(library => `
+            <label class="checkboxContainer libraryOption">
+                <input is="emby-checkbox" type="checkbox" class="chkLibrary" data-library-id="${escapeHtml(library.id)}" disabled />
+                <span>${escapeHtml(library.name)}</span>
+            </label>
+        `).join('');
+    }
+
+    function selectedLibraryIds() {
+        if (page().querySelector('#chkAllLibraries').checked) {
+            return [];
+        }
+
+        return Array.from(page().querySelectorAll('.chkLibrary:checked')).map(input => input.getAttribute('data-library-id'));
+    }
+
+    function updateLibraryPickerState() {
+        const allLibraries = page().querySelector('#chkAllLibraries').checked;
+        page().querySelectorAll('.chkLibrary').forEach(input => {
+            input.disabled = allLibraries;
+            if (allLibraries) {
+                input.checked = false;
+            }
+        });
+    }
+
     function refreshHistory() {
         ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Libraries') }).then(libraries => {
-            page().querySelector('#selLibraries').innerHTML = libraries.map(library => `<option value="${library.id}">${library.name}</option>`).join('');
+            renderLibraries(libraries);
+            updateLibraryPickerState();
         });
         ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Status') }).then(status => {
             page().querySelector('#exportStatus').innerText = `${status.stage || 'Idle'} ${status.progressPercent || 0}%`;
@@ -63,11 +107,10 @@
 
     document.addEventListener('click', event => {
         if (event.target.closest('#btnRunExport')) {
-            const libraryIds = Array.from(page().querySelector('#selLibraries').selectedOptions).map(option => option.value);
             ApiClient.ajax({
                 type: 'POST',
                 url: ApiClient.getUrl('InventoryExporter/Export'),
-                data: JSON.stringify({ formats: ['csv', 'json'], libraryIds: libraryIds }),
+                data: JSON.stringify({ formats: ['csv', 'json'], libraryIds: selectedLibraryIds() }),
                 contentType: 'application/json'
             }).then(refreshHistory);
         }
@@ -79,6 +122,12 @@
         const deleteButton = event.target.closest('[data-delete-export]');
         if (deleteButton) {
             ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('InventoryExporter/Exports/' + deleteButton.getAttribute('data-delete-export')) }).then(refreshHistory);
+        }
+    });
+
+    document.addEventListener('change', event => {
+        if (event.target.matches('#chkAllLibraries')) {
+            updateLibraryPickerState();
         }
     });
 })();

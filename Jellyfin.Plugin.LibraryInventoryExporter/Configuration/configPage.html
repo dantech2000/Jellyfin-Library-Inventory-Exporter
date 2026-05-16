@@ -2,6 +2,22 @@
 <html>
 <head>
     <title>Library Inventory Exporter</title>
+    <style>
+        .libraryPicker {
+            margin-top: 1em;
+        }
+
+        .libraryList {
+            display: flex;
+            flex-direction: column;
+            gap: .5em;
+            margin-top: .75em;
+        }
+
+        .libraryOption.checkboxContainer {
+            margin: 0;
+        }
+    </style>
 </head>
 <body>
     <div id="LibraryInventoryExporterConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
@@ -31,9 +47,13 @@
                         <input is="emby-checkbox" type="checkbox" id="chkUserData" />
                         <span>Include user watch state</span>
                     </label>
-                    <div class="selectContainer">
-                        <label for="selLibraries">Libraries</label>
-                        <select id="selLibraries" multiple></select>
+                    <div class="inputContainer libraryPicker">
+                        <div class="fieldDescription">Libraries</div>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="chkAllLibraries" checked />
+                            <span>All libraries</span>
+                        </label>
+                        <div id="libraryList" class="libraryList"></div>
                     </div>
                     <div class="inputContainer">
                         <input is="emby-input" type="number" id="txtRetentionCount" label="Retention count" min="0" />
