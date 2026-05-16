@@ -79,11 +79,11 @@ public sealed class PackageMetadataTests
         var root = TestPaths.RepositoryRoot();
         var readme = File.ReadAllText(Path.Combine(root, "README.md"));
 
-        Assert.Contains("https://dantech2000.github.io/Jellyfin-Library-Inventory-Exporter/manifest.json", readme);
+        Assert.Contains("https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json", readme);
         Assert.Contains("Open `Dashboard`", readme);
         Assert.Contains("Open `Catalog`", readme);
         Assert.Contains("Install the latest compatible version", readme);
         Assert.Contains("Restart Jellyfin", readme);
-        Assert.Contains("GitHub Pages must be enabled", readme);
+        Assert.Contains("raw GitHub URL above is the most direct Jellyfin repository URL", readme);
     }
 }

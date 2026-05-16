@@ -44,6 +44,17 @@ def github_json(url):
         return json.loads(response.read().decode("utf-8"))
 
 
+def github_asset_text(asset):
+    token = os.environ.get("GITHUB_TOKEN")
+    if token and asset.get("url"):
+        request = urllib.request.Request(asset["url"], headers={"Accept": "application/octet-stream"})
+        request.add_header("Authorization", f"Bearer {token}")
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return response.read().decode("utf-8")
+    with urllib.request.urlopen(asset["browser_download_url"], timeout=30) as response:
+        return response.read().decode("utf-8")
+
+
 def main():
     build = read_build(sys.argv[1])
     output = sys.argv[2]
@@ -61,7 +72,7 @@ def main():
             continue
         checksum = ""
         if md5_asset:
-            checksum = urllib.request.urlopen(md5_asset["browser_download_url"], timeout=30).read().decode("utf-8").strip().split()[0]
+            checksum = github_asset_text(md5_asset).strip().split()[0]
         versions.append({
             "version": version,
             "changelog": release.get("body") or build.get("changelog", ""),
