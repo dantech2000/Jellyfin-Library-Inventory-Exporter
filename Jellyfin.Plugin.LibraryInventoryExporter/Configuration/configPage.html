@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Library Inventory Exporter</title>
+</head>
+<body>
+    <div id="LibraryInventoryExporterConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="LibraryInventoryExporterConfigForm">
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="txtOutputDirectory" label="Output directory" />
+                    </div>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="chkCsv" />
+                        <span>CSV by default</span>
+                    </label>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="chkJson" />
+                        <span>JSON by default</span>
+                    </label>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="chkStreams" />
+                        <span>Include media streams</span>
+                    </label>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="chkProviders" />
+                        <span>Include provider IDs</span>
+                    </label>
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" type="checkbox" id="chkUserData" />
+                        <span>Include user watch state</span>
+                    </label>
+                    <div class="selectContainer">
+                        <label for="selLibraries">Libraries</label>
+                        <select id="selLibraries" multiple></select>
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="txtRetentionCount" label="Retention count" min="0" />
+                    </div>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="number" id="txtRetentionDays" label="Retention days" min="0" />
+                    </div>
+                    <button is="emby-button" type="submit" class="raised button-submit block">
+                        <span>Save</span>
+                    </button>
+                </form>
+
+                <div class="verticalSection">
+                    <button is="emby-button" id="btnRunExport" class="raised block">
+                        <span>Run Export Now</span>
+                    </button>
+                    <button is="emby-button" id="btnDownloadLatest" class="raised block">
+                        <span>Download Latest Export</span>
+                    </button>
+                    <h2>Recent exports</h2>
+                    <div id="exportStatus"></div>
+                    <div id="exportHistory"></div>
+                </div>
+            </div>
+        </div>
+        <script src="configurationpage?name=LibraryInventoryExporterJs"></script>
+    </div>
+</body>
+</html>

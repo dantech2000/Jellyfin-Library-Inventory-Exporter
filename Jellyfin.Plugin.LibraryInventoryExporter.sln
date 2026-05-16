@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.LibraryInventoryExporter", "Jellyfin.Plugin.LibraryInventoryExporter\Jellyfin.Plugin.LibraryInventoryExporter.csproj", "{4F59B2CB-B78B-4676-9B5C-8D5E57D9D741}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.LibraryInventoryExporter.Tests", "Jellyfin.Plugin.LibraryInventoryExporter.Tests\Jellyfin.Plugin.LibraryInventoryExporter.Tests.csproj", "{A9B1D66E-64C5-4FB4-8D3E-483518974D22}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4F59B2CB-B78B-4676-9B5C-8D5E57D9D741}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4F59B2CB-B78B-4676-9B5C-8D5E57D9D741}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4F59B2CB-B78B-4676-9B5C-8D5E57D9D741}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4F59B2CB-B78B-4676-9B5C-8D5E57D9D741}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9B1D66E-64C5-4FB4-8D3E-483518974D22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9B1D66E-64C5-4FB4-8D3E-483518974D22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9B1D66E-64C5-4FB4-8D3E-483518974D22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9B1D66E-64C5-4FB4-8D3E-483518974D22}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

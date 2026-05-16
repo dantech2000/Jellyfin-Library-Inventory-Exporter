@@ -1,0 +1,16 @@
+---
+name: "Library Inventory Exporter"
+guid: "7184fe02-8e91-4fd2-9140-6d58d5e91f0a"
+version: "0.1.0.0"
+targetAbi: "10.11.0.0"
+framework: "net9.0"
+owner: "dantech2000"
+overview: "Export Jellyfin library inventory to CSV and JSON."
+description: >
+  Export a readable inventory manifest of Jellyfin libraries, media files,
+  metadata provider IDs, media streams, and optional user watch state.
+category: "General"
+artifacts:
+  - "Jellyfin.Plugin.LibraryInventoryExporter.dll"
+changelog: >
+  Initial preview release.

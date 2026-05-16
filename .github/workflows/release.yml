@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Publish
+        run: dotnet publish ./Jellyfin.Plugin.LibraryInventoryExporter/Jellyfin.Plugin.LibraryInventoryExporter.csproj -c Release -o ./dist/plugin
+
+      - name: Package
+        run: |
+          cd ./dist/plugin
+          zip -r ../Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip .
+          cd ..
+          md5sum Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip | awk '{ print $1 }' > Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip.md5
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Jellyfin.Plugin.LibraryInventoryExporter.${{ github.ref_name }}.zip
+            dist/Jellyfin.Plugin.LibraryInventoryExporter.${{ github.ref_name }}.zip.md5
+            build.yaml
