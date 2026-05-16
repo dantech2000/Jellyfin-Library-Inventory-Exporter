@@ -18,6 +18,7 @@ public sealed class PackageMetadataTests
         Assert.Contains("owner: \"dantech2000\"", buildYaml);
         Assert.Contains("<Version>0.1.0.0</Version>", project);
         Assert.Contains("<AssemblyVersion>0.1.0.0</AssemblyVersion>", project);
+        Assert.Contains("<NoWarn>$(NoWarn);CS1591</NoWarn>", project);
         Assert.Contains("<PackageReference Include=\"Jellyfin.Controller\" Version=\"10.11.3\">", project);
     }
 
@@ -29,17 +30,29 @@ public sealed class PackageMetadataTests
         var release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
         var publish = File.ReadAllText(Path.Combine(root, ".github", "workflows", "publish-manifest.yml"));
 
+        Assert.Contains("actions/checkout@v5", ci);
+        Assert.Contains("actions/setup-dotnet@v5", ci);
         Assert.Contains("dotnet restore", ci);
         Assert.Contains("dotnet build --configuration Release --no-restore", ci);
         Assert.Contains("dotnet test --configuration Release --no-build", ci);
+        Assert.DoesNotContain("actions/checkout@v4", ci);
+        Assert.DoesNotContain("actions/setup-dotnet@v4", ci);
+        Assert.Contains("actions/checkout@v5", release);
+        Assert.Contains("actions/setup-dotnet@v5", release);
         Assert.Contains("dotnet publish ./Jellyfin.Plugin.LibraryInventoryExporter/Jellyfin.Plugin.LibraryInventoryExporter.csproj", release);
         Assert.Contains("zip -r ../Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip", release);
         Assert.Contains("md5sum Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip", release);
         Assert.Contains("softprops/action-gh-release@v2", release);
+        Assert.DoesNotContain("actions/checkout@v4", release);
+        Assert.DoesNotContain("actions/setup-dotnet@v4", release);
+        Assert.Contains("actions/checkout@v5", publish);
+        Assert.Contains("actions/setup-python@v6", publish);
         Assert.Contains("python source/tools/generate_manifest.py source/build.yaml pages/manifest.json", publish);
         Assert.Contains("git checkout --orphan gh-pages", publish);
         Assert.Contains("git add manifest.json", publish);
         Assert.Contains("git push origin gh-pages", publish);
+        Assert.DoesNotContain("actions/checkout@v4", publish);
+        Assert.DoesNotContain("actions/setup-python@v5", publish);
     }
 
     [Fact]
