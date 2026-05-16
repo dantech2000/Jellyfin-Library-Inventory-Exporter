@@ -5,6 +5,9 @@ version: "0.1.0.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 owner: "dantech2000"
+repositoryName: "Library Inventory Exporter"
+repositoryUrl: "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+imageUrl: "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png"
 overview: "Export Jellyfin library inventory to CSV and JSON."
 description: >
   Export a readable inventory manifest of Jellyfin libraries, media files,

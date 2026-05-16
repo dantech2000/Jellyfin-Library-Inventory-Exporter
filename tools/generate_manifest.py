@@ -80,6 +80,8 @@ def main():
             "sourceUrl": zip_asset["browser_download_url"],
             "checksum": checksum or hashlib.md5(zip_asset["browser_download_url"].encode("utf-8")).hexdigest(),
             "timestamp": release["published_at"],
+            "repositoryName": build.get("repositoryName", build["name"]),
+            "repositoryUrl": build.get("repositoryUrl", ""),
         })
     manifest = [{
         "guid": build["guid"],
@@ -88,6 +90,7 @@ def main():
         "overview": build["overview"],
         "owner": build["owner"],
         "category": build["category"],
+        "imageUrl": build.get("imageUrl", ""),
         "versions": versions,
     }]
     os.makedirs(os.path.dirname(output), exist_ok=True)

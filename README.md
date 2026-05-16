@@ -68,6 +68,8 @@ After restart, open `Dashboard` -> `Plugins` -> `My Plugins` -> `Library Invento
 
 Exports are read-only with respect to Jellyfin media, metadata, and user data. The plugin only writes export archives and history files under the configured output directory.
 
+If you installed the plugin before version `0.1.0` metadata was updated, remove and re-add the repository URL, refresh the catalog, then reinstall the plugin to pick up the catalog image and repository metadata.
+
 ## Repository Publishing Flow
 
 Maintainers publish installable releases with a tag:

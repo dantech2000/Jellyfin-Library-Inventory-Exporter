@@ -16,6 +16,9 @@ public sealed class PackageMetadataTests
         Assert.Contains("version: \"0.1.0.0\"", buildYaml);
         Assert.Contains("targetAbi: \"10.11.0.0\"", buildYaml);
         Assert.Contains("owner: \"dantech2000\"", buildYaml);
+        Assert.Contains("repositoryName: \"Library Inventory Exporter\"", buildYaml);
+        Assert.Contains("repositoryUrl: \"https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json\"", buildYaml);
+        Assert.Contains("imageUrl: \"https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png\"", buildYaml);
         Assert.Contains("<Version>0.1.0.0</Version>", project);
         Assert.Contains("<AssemblyVersion>0.1.0.0</AssemblyVersion>", project);
         Assert.Contains("<NoWarn>$(NoWarn);CS1591</NoWarn>", project);
@@ -85,5 +88,15 @@ public sealed class PackageMetadataTests
         Assert.Contains("Install the latest compatible version", readme);
         Assert.Contains("Restart Jellyfin", readme);
         Assert.Contains("raw GitHub URL above is the most direct Jellyfin repository URL", readme);
+    }
+
+    [Fact]
+    public void PluginCatalogImageAsset_IsPresent()
+    {
+        var root = TestPaths.RepositoryRoot();
+        var imagePath = Path.Combine(root, "assets", "library-inventory-exporter.png");
+
+        Assert.True(File.Exists(imagePath));
+        Assert.True(new FileInfo(imagePath).Length > 10_000);
     }
 }
