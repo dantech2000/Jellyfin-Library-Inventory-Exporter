@@ -9,6 +9,16 @@
     "imageUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png",
     "versions": [
       {
+        "version": "0.1.1",
+        "changelog": "Fix the library selector on the plugin configuration page. ",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.1/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.1.zip",
+        "checksum": "0c00402c2cd6e652e219b8dbcd4b63fd",
+        "timestamp": "2026-05-16T23:16:16Z",
+        "repositoryName": "Library Inventory Exporter",
+        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+      },
+      {
         "version": "0.1.0",
         "changelog": "Initial preview release of Library Inventory Exporter for Jellyfin 10.11.x.",
         "targetAbi": "10.11.0.0",
