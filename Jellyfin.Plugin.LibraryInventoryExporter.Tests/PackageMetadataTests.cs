@@ -50,6 +50,9 @@ public sealed class PackageMetadataTests
         Assert.DoesNotContain("actions/setup-dotnet@v4", release);
         Assert.Contains("actions/checkout@v5", publish);
         Assert.Contains("actions/setup-python@v6", publish);
+        Assert.Contains("workflow_run:", publish);
+        Assert.Contains("workflows: [\"Release\"]", publish);
+        Assert.Contains("github.event.workflow_run.conclusion == 'success'", publish);
         Assert.Contains("python source/tools/generate_manifest.py source/build.yaml pages/manifest.json", publish);
         Assert.Contains("git checkout --orphan gh-pages", publish);
         Assert.Contains("git add manifest.json", publish);
