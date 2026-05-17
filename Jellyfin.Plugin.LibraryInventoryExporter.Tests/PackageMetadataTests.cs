@@ -13,16 +13,17 @@ public sealed class PackageMetadataTests
 
         Assert.Contains("name: \"Library Inventory Exporter\"", buildYaml);
         Assert.Contains("guid: \"7184fe02-8e91-4fd2-9140-6d58d5e91f0a\"", buildYaml);
-        Assert.Contains("version: \"0.1.6.0\"", buildYaml);
+        Assert.Contains("version: \"0.1.7.0\"", buildYaml);
         Assert.Contains("targetAbi: \"10.11.0.0\"", buildYaml);
         Assert.Contains("owner: \"dantech2000\"", buildYaml);
         Assert.Contains("repositoryName: \"Library Inventory Exporter\"", buildYaml);
-        Assert.Contains("repositoryUrl: \"https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json\"", buildYaml);
-        Assert.Contains("imageUrl: \"https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png\"", buildYaml);
+        Assert.Contains("repositoryUrl: \"https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter\"", buildYaml);
+        Assert.Contains("imageUrl: \"https://cdn.jsdelivr.net/gh/dantech2000/Jellyfin-Library-Inventory-Exporter@", buildYaml);
+        Assert.Contains("/assets/library-inventory-exporter.png\"", buildYaml);
         Assert.Contains("- \"meta.json\"", buildYaml);
         Assert.Contains("- \"library-inventory-exporter.png\"", buildYaml);
-        Assert.Contains("<Version>0.1.6.0</Version>", project);
-        Assert.Contains("<AssemblyVersion>0.1.6.0</AssemblyVersion>", project);
+        Assert.Contains("<Version>0.1.7.0</Version>", project);
+        Assert.Contains("<AssemblyVersion>0.1.7.0</AssemblyVersion>", project);
         Assert.Contains("<NoWarn>$(NoWarn);CS1591</NoWarn>", project);
         Assert.Contains("<PackageReference Include=\"Jellyfin.Controller\" Version=\"10.11.3\">", project);
         Assert.Contains("Include=\"meta.json\" CopyToPublishDirectory=\"PreserveNewest\"", project);
@@ -88,8 +89,12 @@ public sealed class PackageMetadataTests
         Assert.Contains("data-output-directory", script);
         Assert.Contains("selectedLibraryIds()", script);
         Assert.Contains("scheduleStatusRefresh", script);
+        Assert.Contains("scheduleInitialStatusRefresh", script);
+        Assert.Contains("setTimeout(refreshStatus, 250)", script);
         Assert.Contains("setTimeout(refreshStatus, 2000)", script);
         Assert.Contains("Export Running", script);
+        Assert.Contains("normalizeStatus", script);
+        Assert.Contains("ProgressPercent", script);
         Assert.Contains("renderProgress", script);
         Assert.Contains("aria-valuenow", script);
         Assert.Contains("Dashboard.toast", script);

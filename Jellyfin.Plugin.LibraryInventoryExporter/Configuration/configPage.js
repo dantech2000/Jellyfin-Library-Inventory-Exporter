@@ -141,11 +141,36 @@
         return Math.max(0, Math.min(100, Math.round(percent)));
     }
 
-    function renderProgress(status) {
+    function statusValue(status, camelName, pascalName, fallback) {
+        if (Object.prototype.hasOwnProperty.call(status, camelName)) {
+            return status[camelName];
+        }
+
+        if (Object.prototype.hasOwnProperty.call(status, pascalName)) {
+            return status[pascalName];
+        }
+
+        return fallback;
+    }
+
+    function normalizeStatus(status) {
+        return {
+            isRunning: statusValue(status, 'isRunning', 'IsRunning', false) === true,
+            exportId: statusValue(status, 'exportId', 'ExportId', ''),
+            stage: statusValue(status, 'stage', 'Stage', 'Idle') || 'Idle',
+            progressPercent: statusValue(status, 'progressPercent', 'ProgressPercent', 0),
+            processedItems: statusValue(status, 'processedItems', 'ProcessedItems', 0),
+            totalItems: statusValue(status, 'totalItems', 'TotalItems', 0),
+            errorMessage: statusValue(status, 'errorMessage', 'ErrorMessage', '')
+        };
+    }
+
+    function renderProgress(rawStatus) {
+        const status = normalizeStatus(rawStatus);
         const container = page().querySelector('#exportProgress');
         const bar = container.querySelector('.exportProgressBar');
         const fill = page().querySelector('#exportProgressFill');
-        const stage = status.stage || 'Idle';
+        const stage = status.stage;
         const percent = clampPercent(status.progressPercent);
         const processed = Number(status.processedItems || 0);
         const total = Number(status.totalItems || 0);
@@ -165,7 +190,8 @@
         }
     }
 
-    function maybeNotifyExportFinished(status) {
+    function maybeNotifyExportFinished(rawStatus) {
+        const status = normalizeStatus(rawStatus);
         const exportId = status.exportId || activeExportId;
         if (!exportId || status.isRunning || lastNotifiedExportId === exportId) {
             return;
@@ -183,12 +209,13 @@
         }
     }
 
-    function renderStatus(status) {
+    function renderStatus(rawStatus) {
+        const status = normalizeStatus(rawStatus);
         renderProgress(status);
         maybeNotifyExportFinished(status);
 
         const percent = clampPercent(status.progressPercent);
-        const statusText = `${status.stage || 'Idle'} ${percent}%`;
+        const statusText = `${status.stage} ${percent}%`;
         page().querySelector('#exportStatus').innerText = status.errorMessage ? `${statusText}: ${status.errorMessage}` : statusText;
         setExportButtonRunning(status.isRunning === true);
 
@@ -212,6 +239,11 @@
     function scheduleStatusRefresh() {
         clearStatusRefresh();
         statusTimer = setTimeout(refreshStatus, 2000);
+    }
+
+    function scheduleInitialStatusRefresh() {
+        clearStatusRefresh();
+        statusTimer = setTimeout(refreshStatus, 250);
     }
 
     function refreshStatus() {
@@ -275,13 +307,14 @@
                 data: JSON.stringify({ formats: ['csv', 'json'], libraryIds: selectedLibraryIds() }),
                 contentType: 'application/json'
             }).then(response => {
-                activeExportId = response && response.exportId ? response.exportId : '';
+                const startStatus = normalizeStatus(response || {});
+                activeExportId = startStatus.exportId;
                 lastNotifiedExportId = '';
                 page().querySelector('#exportStatus').innerText = 'Starting export 0%';
                 renderProgress({ isRunning: true, exportId: activeExportId, stage: 'Starting export', progressPercent: 0 });
                 setExportButtonRunning(true);
                 showToast('Library inventory export started.');
-                scheduleStatusRefresh();
+                scheduleInitialStatusRefresh();
             });
         }
 
