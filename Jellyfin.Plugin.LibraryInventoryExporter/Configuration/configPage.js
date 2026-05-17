@@ -87,9 +87,16 @@
         });
     }
 
+    function setExportButtonRunning(isRunning) {
+        const button = page().querySelector('#btnRunExport');
+        button.disabled = isRunning;
+        button.querySelector('span').innerText = isRunning ? 'Export Running' : 'Run Export Now';
+    }
+
     function renderStatus(status) {
         const statusText = `${status.stage || 'Idle'} ${status.progressPercent || 0}%`;
         page().querySelector('#exportStatus').innerText = status.errorMessage ? `${statusText}: ${status.errorMessage}` : statusText;
+        setExportButtonRunning(status.isRunning === true);
 
         if (status.isRunning) {
             scheduleStatusRefresh();
@@ -174,6 +181,7 @@
                 contentType: 'application/json'
             }).then(() => {
                 page().querySelector('#exportStatus').innerText = 'Starting export 0%';
+                setExportButtonRunning(true);
                 scheduleStatusRefresh();
             });
         }

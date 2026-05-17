@@ -50,7 +50,9 @@ public sealed class LibraryScanner
         var libraries = GetLibraries()
             .Where(l => options.LibraryIds.Count == 0 || options.LibraryIds.Contains(GetGuid(l, "Id")))
             .ToList();
+        var allItems = new Lazy<IReadOnlyList<object>>(QueryAllItems);
         var processed = 0;
+        _logger.LogInformation("Starting inventory scan for {LibraryCount} libraries. Selected library filter count: {SelectedLibraryCount}", libraries.Count, options.LibraryIds.Count);
 
         foreach (var library in libraries)
         {
@@ -63,7 +65,8 @@ public sealed class LibraryScanner
                 CollectionType = GetString(library, "CollectionType")
             };
 
-            var items = GetItems(library).Where(IsSupportedItem).ToList();
+            var items = GetItems(library, allItems).Where(IsSupportedItem).ToList();
+            _logger.LogInformation("Inventory scan library {LibraryName} ({LibraryId}) resolved {ItemCount} supported items", inventoryLibrary.Name, inventoryLibrary.Id, items.Count);
             foreach (var item in items)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -124,30 +127,47 @@ public sealed class LibraryScanner
         return Array.Empty<object>();
     }
 
-    private IReadOnlyList<object> GetItems(object library)
+    private IReadOnlyList<object> GetItems(object library, Lazy<IReadOnlyList<object>> allItems)
     {
+        var libraryName = GetString(library, "Name") ?? "Unknown";
         var libraryId = GetGuid(library, "ItemId");
         if (libraryId == Guid.Empty)
         {
             libraryId = GetGuid(library, "Id");
         }
 
+        var locations = GetStringArray(library, "Locations")
+            .Where(location => !string.IsNullOrWhiteSpace(location))
+            .ToArray();
+        _logger.LogInformation("Resolving inventory items for library {LibraryName}. ItemId/Id: {LibraryId}; Locations: {Locations}", libraryName, libraryId, locations.Length == 0 ? "(none)" : string.Join(", ", locations));
+
         if (libraryId != Guid.Empty)
         {
             var items = QueryItems(libraryId, useTopParent: true);
+            _logger.LogInformation("Top-parent query for library {LibraryName} ({LibraryId}) returned {ItemCount} items", libraryName, libraryId, items.Count);
             if (items.Count > 0)
             {
                 return items;
             }
 
             items = QueryItems(libraryId, useTopParent: false);
+            _logger.LogInformation("Parent query for library {LibraryName} ({LibraryId}) returned {ItemCount} items", libraryName, libraryId, items.Count);
             if (items.Count > 0)
             {
                 return items;
             }
         }
 
-        return GetChildren(library).Where(IsSupportedItem).ToList();
+        var itemsByLocation = GetItemsByLocation(library, allItems.Value);
+        _logger.LogInformation("Location query for library {LibraryName} matched {ItemCount} items from {AllItemCount} indexed items", libraryName, itemsByLocation.Count, allItems.Value.Count);
+        if (itemsByLocation.Count > 0)
+        {
+            return itemsByLocation;
+        }
+
+        var reflectedItems = GetChildren(library).Where(IsSupportedItem).ToList();
+        _logger.LogInformation("Reflection fallback for library {LibraryName} returned {ItemCount} items", libraryName, reflectedItems.Count);
+        return reflectedItems;
     }
 
     private IReadOnlyList<object> QueryItems(Guid libraryId, bool useTopParent)
@@ -176,6 +196,63 @@ public sealed class LibraryScanner
             _logger.LogDebug(ex, "Unable to query inventory export items for library {LibraryId}", libraryId);
             return Array.Empty<object>();
         }
+    }
+
+    private IReadOnlyList<object> QueryAllItems()
+    {
+        try
+        {
+            var items = _libraryManager.GetItemList(new InternalItemsQuery
+            {
+                Recursive = true,
+                IncludeItemTypes = SupportedItemKinds
+            }).Cast<object>().ToList();
+            _logger.LogInformation("Inventory scan all-items query returned {ItemCount} supported items", items.Count);
+            return items;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Unable to query all inventory export items");
+            return Array.Empty<object>();
+        }
+    }
+
+    private static IReadOnlyList<object> GetItemsByLocation(object library, IReadOnlyList<object> allItems)
+    {
+        var locations = GetStringArray(library, "Locations")
+            .Where(location => !string.IsNullOrWhiteSpace(location))
+            .Select(NormalizeDirectory)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (locations.Length == 0)
+        {
+            return Array.Empty<object>();
+        }
+
+        return allItems
+            .Where(item => IsSupportedItem(item))
+            .Where(item => IsUnderAnyLocation(GetString(item, "Path"), locations))
+            .ToList();
+    }
+
+    private static bool IsUnderAnyLocation(string? path, IReadOnlyList<string> locations)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        var normalizedPath = Path.GetFullPath(path);
+        return locations.Any(location => normalizedPath.StartsWith(location, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeDirectory(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        return fullPath.EndsWith(Path.DirectorySeparatorChar)
+            ? fullPath
+            : fullPath + Path.DirectorySeparatorChar;
     }
 
     private IEnumerable<object> EnumerateTree(object root)
@@ -427,6 +504,7 @@ public sealed class LibraryScanner
     }
 
     private static string? GetString(object target, string name) => Convert.ToString(GetValue(target, name));
+    private static IEnumerable<string> GetStringArray(object target, string name) => GetValue(target, name) is IEnumerable values ? values.Cast<object>().Select(value => Convert.ToString(value) ?? string.Empty) : Array.Empty<string>();
     private static Guid GetGuid(object target, string name) => Guid.TryParse(Convert.ToString(GetValue(target, name)), out var guid) ? guid : Guid.Empty;
     private static int? GetInt(object target, string name) => int.TryParse(Convert.ToString(GetValue(target, name)), out var value) ? value : null;
     private static long? GetLong(object target, string name) => long.TryParse(Convert.ToString(GetValue(target, name)), out var value) ? value : null;
