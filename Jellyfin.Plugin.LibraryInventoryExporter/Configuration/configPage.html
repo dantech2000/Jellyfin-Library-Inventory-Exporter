@@ -29,6 +29,42 @@
             max-width: 100%;
             overflow-wrap: anywhere;
         }
+
+        .exportProgress {
+            margin: 1em 0;
+        }
+
+        .exportProgressHeader {
+            align-items: center;
+            display: flex;
+            justify-content: space-between;
+            gap: 1em;
+            margin-bottom: .5em;
+        }
+
+        .exportProgressStage,
+        .exportProgressPercent {
+            font-weight: 600;
+        }
+
+        .exportProgressBar {
+            background: rgba(255, 255, 255, .18);
+            border-radius: 4px;
+            height: .75em;
+            overflow: hidden;
+        }
+
+        .exportProgressFill {
+            background: #00a4dc;
+            height: 100%;
+            min-width: 0;
+            transition: width .2s ease;
+            width: 0;
+        }
+
+        .exportProgressDetails {
+            margin-top: .5em;
+        }
     </style>
 </head>
 <body>
@@ -87,6 +123,16 @@
                     <button is="emby-button" id="btnDownloadLatest" class="raised block">
                         <span>Download Latest Export</span>
                     </button>
+                    <div id="exportProgress" class="exportProgress" hidden>
+                        <div class="exportProgressHeader">
+                            <span id="exportProgressStage" class="exportProgressStage">Idle</span>
+                            <span id="exportProgressPercent" class="exportProgressPercent">0%</span>
+                        </div>
+                        <div class="exportProgressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <div id="exportProgressFill" class="exportProgressFill"></div>
+                        </div>
+                        <div id="exportProgressDetails" class="fieldDescription exportProgressDetails"></div>
+                    </div>
                     <h2>Recent exports</h2>
                     <div id="exportStatus"></div>
                     <div id="exportHistory"></div>

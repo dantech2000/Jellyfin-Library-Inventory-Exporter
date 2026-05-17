@@ -1,6 +1,8 @@
 (function () {
     const pluginId = '7184fe02-8e91-4fd2-9140-6d58d5e91f0a';
     let statusTimer;
+    let activeExportId = '';
+    let lastNotifiedExportId = '';
 
     function page() {
         return document.querySelector('#LibraryInventoryExporterConfigPage');
@@ -119,12 +121,79 @@
         button.querySelector('span').innerText = isRunning ? 'Export Running' : 'Run Export Now';
     }
 
+    function showToast(message) {
+        if (typeof Dashboard !== 'undefined' && typeof Dashboard.toast === 'function') {
+            Dashboard.toast(message);
+            return;
+        }
+
+        if (typeof Dashboard !== 'undefined' && typeof Dashboard.alert === 'function') {
+            Dashboard.alert(message);
+        }
+    }
+
+    function clampPercent(value) {
+        const percent = Number(value);
+        if (!Number.isFinite(percent)) {
+            return 0;
+        }
+
+        return Math.max(0, Math.min(100, Math.round(percent)));
+    }
+
+    function renderProgress(status) {
+        const container = page().querySelector('#exportProgress');
+        const bar = container.querySelector('.exportProgressBar');
+        const fill = page().querySelector('#exportProgressFill');
+        const stage = status.stage || 'Idle';
+        const percent = clampPercent(status.progressPercent);
+        const processed = Number(status.processedItems || 0);
+        const total = Number(status.totalItems || 0);
+
+        container.hidden = !status.isRunning && percent === 0 && !status.errorMessage && stage === 'Idle';
+        page().querySelector('#exportProgressStage').innerText = stage;
+        page().querySelector('#exportProgressPercent').innerText = `${percent}%`;
+        fill.style.width = `${percent}%`;
+        bar.setAttribute('aria-valuenow', String(percent));
+
+        if (status.errorMessage) {
+            page().querySelector('#exportProgressDetails').innerText = status.errorMessage;
+        } else if (total > 0) {
+            page().querySelector('#exportProgressDetails').innerText = `${processed} of ${total} items processed`;
+        } else {
+            page().querySelector('#exportProgressDetails').innerText = status.isRunning ? 'Export in progress' : '';
+        }
+    }
+
+    function maybeNotifyExportFinished(status) {
+        const exportId = status.exportId || activeExportId;
+        if (!exportId || status.isRunning || lastNotifiedExportId === exportId) {
+            return;
+        }
+
+        if (status.errorMessage || status.stage === 'Failed') {
+            showToast(`Library inventory export failed: ${status.errorMessage || 'Unknown error'}`);
+            lastNotifiedExportId = exportId;
+            return;
+        }
+
+        if (status.stage === 'Completed' || clampPercent(status.progressPercent) === 100) {
+            showToast('Library inventory export completed.');
+            lastNotifiedExportId = exportId;
+        }
+    }
+
     function renderStatus(status) {
-        const statusText = `${status.stage || 'Idle'} ${status.progressPercent || 0}%`;
+        renderProgress(status);
+        maybeNotifyExportFinished(status);
+
+        const percent = clampPercent(status.progressPercent);
+        const statusText = `${status.stage || 'Idle'} ${percent}%`;
         page().querySelector('#exportStatus').innerText = status.errorMessage ? `${statusText}: ${status.errorMessage}` : statusText;
         setExportButtonRunning(status.isRunning === true);
 
         if (status.isRunning) {
+            activeExportId = status.exportId || activeExportId;
             scheduleStatusRefresh();
             return;
         }
@@ -205,9 +274,13 @@
                 url: ApiClient.getUrl('InventoryExporter/Export'),
                 data: JSON.stringify({ formats: ['csv', 'json'], libraryIds: selectedLibraryIds() }),
                 contentType: 'application/json'
-            }).then(() => {
+            }).then(response => {
+                activeExportId = response && response.exportId ? response.exportId : '';
+                lastNotifiedExportId = '';
                 page().querySelector('#exportStatus').innerText = 'Starting export 0%';
+                renderProgress({ isRunning: true, exportId: activeExportId, stage: 'Starting export', progressPercent: 0 });
                 setExportButtonRunning(true);
+                showToast('Library inventory export started.');
                 scheduleStatusRefresh();
             });
         }

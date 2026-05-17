@@ -13,7 +13,7 @@ public sealed class PackageMetadataTests
 
         Assert.Contains("name: \"Library Inventory Exporter\"", buildYaml);
         Assert.Contains("guid: \"7184fe02-8e91-4fd2-9140-6d58d5e91f0a\"", buildYaml);
-        Assert.Contains("version: \"0.1.5.0\"", buildYaml);
+        Assert.Contains("version: \"0.1.6.0\"", buildYaml);
         Assert.Contains("targetAbi: \"10.11.0.0\"", buildYaml);
         Assert.Contains("owner: \"dantech2000\"", buildYaml);
         Assert.Contains("repositoryName: \"Library Inventory Exporter\"", buildYaml);
@@ -21,8 +21,8 @@ public sealed class PackageMetadataTests
         Assert.Contains("imageUrl: \"https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png\"", buildYaml);
         Assert.Contains("- \"meta.json\"", buildYaml);
         Assert.Contains("- \"library-inventory-exporter.png\"", buildYaml);
-        Assert.Contains("<Version>0.1.5.0</Version>", project);
-        Assert.Contains("<AssemblyVersion>0.1.5.0</AssemblyVersion>", project);
+        Assert.Contains("<Version>0.1.6.0</Version>", project);
+        Assert.Contains("<AssemblyVersion>0.1.6.0</AssemblyVersion>", project);
         Assert.Contains("<NoWarn>$(NoWarn);CS1591</NoWarn>", project);
         Assert.Contains("<PackageReference Include=\"Jellyfin.Controller\" Version=\"10.11.3\">", project);
         Assert.Contains("Include=\"meta.json\" CopyToPublishDirectory=\"PreserveNewest\"", project);
@@ -76,6 +76,8 @@ public sealed class PackageMetadataTests
         Assert.Contains("id=\"chkAllLibraries\"", html);
         Assert.Contains("id=\"libraryList\"", html);
         Assert.Contains("id=\"outputDirectoryOptions\"", html);
+        Assert.Contains("id=\"exportProgress\"", html);
+        Assert.Contains("role=\"progressbar\"", html);
         Assert.DoesNotContain("id=\"selLibraries\"", html);
         Assert.Contains("InventoryExporter/Export", script);
         Assert.Contains("InventoryExporter/Exports", script);
@@ -88,6 +90,11 @@ public sealed class PackageMetadataTests
         Assert.Contains("scheduleStatusRefresh", script);
         Assert.Contains("setTimeout(refreshStatus, 2000)", script);
         Assert.Contains("Export Running", script);
+        Assert.Contains("renderProgress", script);
+        Assert.Contains("aria-valuenow", script);
+        Assert.Contains("Dashboard.toast", script);
+        Assert.Contains("Library inventory export completed.", script);
+        Assert.Contains("Library inventory export failed", script);
         Assert.Contains("No exports yet.", script);
         Assert.Contains("getDownloadUrl", script);
         Assert.Contains("api_key=", script);
@@ -124,7 +131,18 @@ public sealed class PackageMetadataTests
 
         Assert.True(File.Exists(imagePath));
         Assert.True(new FileInfo(imagePath).Length > 10_000);
-        Assert.Contains("\"imagePath\": \"library-inventory-exporter.png\"", metaJson);
+        Assert.DoesNotContain("\"imagePath\"", metaJson);
         Assert.Contains("\"id\": \"7184fe02-8e91-4fd2-9140-6d58d5e91f0a\"", metaJson);
+    }
+
+    [Fact]
+    public void PackagedManifest_DoesNotOverrideCatalogImageDownload()
+    {
+        var root = TestPaths.RepositoryRoot();
+        var metaJson = File.ReadAllText(Path.Combine(root, "Jellyfin.Plugin.LibraryInventoryExporter", "meta.json"));
+
+        Assert.Contains("\"autoUpdate\": true", metaJson);
+        Assert.DoesNotContain("\"imagePath\"", metaJson);
+        Assert.DoesNotContain("\"imageUrl\"", metaJson);
     }
 }

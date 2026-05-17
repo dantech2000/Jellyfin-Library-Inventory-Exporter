@@ -1,7 +1,7 @@
 ---
 name: "Library Inventory Exporter"
 guid: "7184fe02-8e91-4fd2-9140-6d58d5e91f0a"
-version: "0.1.5.0"
+version: "0.1.6.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 owner: "dantech2000"
@@ -18,4 +18,4 @@ artifacts:
   - "meta.json"
   - "library-inventory-exporter.png"
 changelog: >
-  Include plugin image metadata and image file as install artifacts.
+  Fix plugin image persistence after restart and add export progress notifications.
