@@ -9,8 +9,18 @@
     "imageUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png",
     "versions": [
       {
+        "version": "0.1.6",
+        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.6/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.6.zip",
+        "checksum": "8914ba651122ce51ce7b14fe8275d96d",
+        "timestamp": "2026-05-17T07:12:39Z",
+        "repositoryName": "Library Inventory Exporter",
+        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+      },
+      {
         "version": "0.1.5",
-        "changelog": "Include plugin image metadata and image file as install artifacts. ",
+        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.5/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.5.zip",
         "checksum": "aafca33067e290d716b7c7a7bb250245",
@@ -20,7 +30,7 @@
       },
       {
         "version": "0.1.4",
-        "changelog": "Include plugin image metadata and image file as install artifacts. ",
+        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.4/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.4.zip",
         "checksum": "d914015a6007410f9005a25b95696c1f",
@@ -30,7 +40,7 @@
       },
       {
         "version": "0.1.3",
-        "changelog": "Include plugin image metadata and image file as install artifacts. ",
+        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.3/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.3.zip",
         "checksum": "5fc472a6e5ae351f4529f5de6854db7b",
@@ -40,7 +50,7 @@
       },
       {
         "version": "0.1.2",
-        "changelog": "Include plugin image metadata and image file as install artifacts. ",
+        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.2/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.2.zip",
         "checksum": "eeed3921962b104c8e2a83b536bd855d",
@@ -50,7 +60,7 @@
       },
       {
         "version": "0.1.1",
-        "changelog": "Include plugin image metadata and image file as install artifacts. ",
+        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.1/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.1.zip",
         "checksum": "0c00402c2cd6e652e219b8dbcd4b63fd",
