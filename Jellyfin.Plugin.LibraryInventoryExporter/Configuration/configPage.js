@@ -43,6 +43,31 @@
         `).join('');
     }
 
+    function renderOutputDirectories(options) {
+        const input = page().querySelector('#txtOutputDirectory');
+        const help = page().querySelector('#outputDirectoryHelp');
+        const container = page().querySelector('#outputDirectoryOptions');
+        const writableOptions = (options || []).filter(option => option.isWritable !== false);
+        const defaultOption = writableOptions.find(option => option.isDefault) || writableOptions[0];
+
+        if (!input.value && defaultOption) {
+            input.value = defaultOption.path;
+        }
+
+        if (!defaultOption) {
+            help.innerText = 'Enter a server path that the Jellyfin process can write to.';
+            container.innerHTML = '';
+            return;
+        }
+
+        help.innerText = 'Exports are written by the Jellyfin server. In Docker, use a container path backed by a writable volume.';
+        container.innerHTML = writableOptions.map(option => `
+            <button is="emby-button" type="button" class="raised outputDirectoryOption" data-output-directory="${escapeHtml(option.path)}">
+                <span>${escapeHtml(option.label)}: ${escapeHtml(option.path)}</span>
+            </button>
+        `).join('');
+    }
+
     function selectedLibraryIds() {
         if (page().querySelector('#chkAllLibraries').checked) {
             return [];
@@ -62,6 +87,7 @@
     }
 
     function refreshHistory() {
+        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/OutputDirectories') }).then(renderOutputDirectories);
         ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Libraries') }).then(libraries => {
             renderLibraries(libraries);
             updateLibraryPickerState();
@@ -117,6 +143,11 @@
 
         if (event.target.closest('#btnDownloadLatest')) {
             window.location.href = ApiClient.getUrl('InventoryExporter/Exports/Latest');
+        }
+
+        const outputDirectoryButton = event.target.closest('[data-output-directory]');
+        if (outputDirectoryButton) {
+            page().querySelector('#txtOutputDirectory').value = outputDirectoryButton.getAttribute('data-output-directory');
         }
 
         const deleteButton = event.target.closest('[data-delete-export]');

@@ -56,6 +56,15 @@ public sealed class ExportHistoryEntry
     public bool IncludesUserData { get; init; }
 }
 
+public sealed class OutputDirectoryOption
+{
+    public string Path { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public bool IsDefault { get; init; }
+    public bool IsCurrent { get; init; }
+    public bool IsWritable { get; init; }
+}
+
 public sealed class LibraryOption
 {
     public string Id { get; init; } = string.Empty;

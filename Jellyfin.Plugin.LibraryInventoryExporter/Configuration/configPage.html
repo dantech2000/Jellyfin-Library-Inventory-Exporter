@@ -17,6 +17,18 @@
         .libraryOption.checkboxContainer {
             margin: 0;
         }
+
+        .outputDirectoryOptions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5em;
+            margin-top: .75em;
+        }
+
+        .outputDirectoryOption {
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }
     </style>
 </head>
 <body>
@@ -26,6 +38,8 @@
                 <form id="LibraryInventoryExporterConfigForm">
                     <div class="inputContainer">
                         <input is="emby-input" type="text" id="txtOutputDirectory" label="Output directory" />
+                        <div class="fieldDescription" id="outputDirectoryHelp"></div>
+                        <div id="outputDirectoryOptions" class="outputDirectoryOptions"></div>
                     </div>
                     <label class="checkboxContainer">
                         <input is="emby-checkbox" type="checkbox" id="chkCsv" />

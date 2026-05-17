@@ -13,14 +13,14 @@ public sealed class PackageMetadataTests
 
         Assert.Contains("name: \"Library Inventory Exporter\"", buildYaml);
         Assert.Contains("guid: \"7184fe02-8e91-4fd2-9140-6d58d5e91f0a\"", buildYaml);
-        Assert.Contains("version: \"0.1.1.0\"", buildYaml);
+        Assert.Contains("version: \"0.1.2.0\"", buildYaml);
         Assert.Contains("targetAbi: \"10.11.0.0\"", buildYaml);
         Assert.Contains("owner: \"dantech2000\"", buildYaml);
         Assert.Contains("repositoryName: \"Library Inventory Exporter\"", buildYaml);
         Assert.Contains("repositoryUrl: \"https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json\"", buildYaml);
         Assert.Contains("imageUrl: \"https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png\"", buildYaml);
-        Assert.Contains("<Version>0.1.1.0</Version>", project);
-        Assert.Contains("<AssemblyVersion>0.1.1.0</AssemblyVersion>", project);
+        Assert.Contains("<Version>0.1.2.0</Version>", project);
+        Assert.Contains("<AssemblyVersion>0.1.2.0</AssemblyVersion>", project);
         Assert.Contains("<NoWarn>$(NoWarn);CS1591</NoWarn>", project);
         Assert.Contains("<PackageReference Include=\"Jellyfin.Controller\" Version=\"10.11.3\">", project);
     }
@@ -71,17 +71,21 @@ public sealed class PackageMetadataTests
 
         Assert.Contains("id=\"chkAllLibraries\"", html);
         Assert.Contains("id=\"libraryList\"", html);
+        Assert.Contains("id=\"outputDirectoryOptions\"", html);
         Assert.DoesNotContain("id=\"selLibraries\"", html);
         Assert.Contains("InventoryExporter/Export", script);
         Assert.Contains("InventoryExporter/Exports", script);
         Assert.Contains("InventoryExporter/Exports/Latest", script);
         Assert.Contains("InventoryExporter/Libraries", script);
+        Assert.Contains("InventoryExporter/OutputDirectories", script);
         Assert.Contains("data-library-id", script);
+        Assert.Contains("data-output-directory", script);
         Assert.Contains("selectedLibraryIds()", script);
         Assert.DoesNotContain("selectedOptions", script);
         Assert.DoesNotContain("#selLibraries", script);
         Assert.Contains("data-delete-export", script);
         Assert.Contains("[Authorize(Policy = \"RequiresElevation\")]", controller);
+        Assert.Contains("[HttpGet(\"OutputDirectories\")]", controller);
         Assert.Contains("[HttpPost(\"Export\")]", controller);
         Assert.Contains("[HttpGet(\"Exports/{id}/Download\")]", controller);
         Assert.Contains("[HttpDelete(\"Exports/{id}\")]", controller);

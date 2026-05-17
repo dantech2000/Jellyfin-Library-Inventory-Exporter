@@ -7,6 +7,7 @@ namespace Jellyfin.Plugin.LibraryInventoryExporter.Services;
 public sealed class ExportFileStore
 {
     public const string ExportPrefix = "jellyfin-inventory-";
+    public const string DefaultDirectoryName = "inventory-exports";
     private readonly IServerApplicationPaths _paths;
 
     public ExportFileStore(IServerApplicationPaths paths)
@@ -18,9 +19,42 @@ public sealed class ExportFileStore
     {
         var configured = Plugin.Instance?.Configuration.OutputDirectory;
         var directory = string.IsNullOrWhiteSpace(configured)
-            ? Path.Combine(_paths.DataPath, "inventory-exports")
+            ? GetDefaultOutputDirectory()
             : configured;
         return Path.GetFullPath(directory);
+    }
+
+    public string GetDefaultOutputDirectory() => Path.GetFullPath(Path.Combine(_paths.DataPath, DefaultDirectoryName));
+
+    public IReadOnlyList<OutputDirectoryOption> GetOutputDirectoryOptions()
+    {
+        var current = ResolveOutputDirectory();
+        var options = new List<OutputDirectoryOption>
+        {
+            CreateOption(GetDefaultOutputDirectory(), "Jellyfin data directory", isDefault: true, current)
+        };
+
+        if (!string.Equals(current, GetDefaultOutputDirectory(), StringComparison.Ordinal))
+        {
+            options.Add(CreateOption(current, "Current setting", isDefault: false, current));
+        }
+
+        foreach (var candidate in GetCandidateOutputDirectories())
+        {
+            var fullPath = Path.GetFullPath(candidate.Path);
+            if (options.Any(option => string.Equals(option.Path, fullPath, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            var option = CreateOption(fullPath, candidate.Label, isDefault: false, current);
+            if (option.IsWritable)
+            {
+                options.Add(option);
+            }
+        }
+
+        return options;
     }
 
     public string CreateExportId(DateTimeOffset generatedAt) => generatedAt.UtcDateTime.ToString("yyyy-MM-ddTHHmmssZ");
@@ -115,5 +149,77 @@ public sealed class ExportFileStore
         {
             return null;
         }
+    }
+
+    private static IEnumerable<(string Path, string Label)> GetCandidateOutputDirectories()
+    {
+        if (IsRunningInContainer())
+        {
+            yield return (Path.Combine(Path.DirectorySeparatorChar.ToString(), "config", DefaultDirectoryName), "Docker config volume");
+            yield return (Path.Combine(Path.DirectorySeparatorChar.ToString(), "exports", "jellyfin-inventory"), "Docker exports volume");
+        }
+
+        yield return (Path.Combine(Path.DirectorySeparatorChar.ToString(), "var", "lib", "jellyfin", DefaultDirectoryName), "Linux Jellyfin data directory");
+    }
+
+    private static OutputDirectoryOption CreateOption(string path, string label, bool isDefault, string current)
+    {
+        var fullPath = Path.GetFullPath(path);
+        return new OutputDirectoryOption
+        {
+            Path = fullPath,
+            Label = label,
+            IsDefault = isDefault,
+            IsCurrent = string.Equals(fullPath, current, StringComparison.Ordinal),
+            IsWritable = CanWriteToDirectory(fullPath)
+        };
+    }
+
+    private static bool CanWriteToDirectory(string path)
+    {
+        try
+        {
+            var probeDirectory = Directory.Exists(path) ? path : Path.GetDirectoryName(path);
+            if (string.IsNullOrWhiteSpace(probeDirectory) || !Directory.Exists(probeDirectory))
+            {
+                return false;
+            }
+
+            var probePath = Path.Combine(probeDirectory, ".jlie-write-test-" + Guid.NewGuid().ToString("N"));
+            using (File.Create(probePath, 1, FileOptions.DeleteOnClose))
+            {
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsRunningInContainer()
+    {
+        if (File.Exists("/.dockerenv") || File.Exists("/run/.containerenv"))
+        {
+            return true;
+        }
+
+        try
+        {
+            if (File.Exists("/proc/1/cgroup"))
+            {
+                var cgroup = File.ReadAllText("/proc/1/cgroup");
+                return cgroup.Contains("docker", StringComparison.OrdinalIgnoreCase)
+                    || cgroup.Contains("kubepods", StringComparison.OrdinalIgnoreCase)
+                    || cgroup.Contains("containerd", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        catch
+        {
+            return false;
+        }
+
+        return false;
     }
 }

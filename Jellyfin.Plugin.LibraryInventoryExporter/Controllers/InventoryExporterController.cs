@@ -24,6 +24,9 @@ public sealed class InventoryExporterController : ControllerBase
     [HttpGet("Libraries")]
     public ActionResult<IReadOnlyList<LibraryOption>> Libraries() => Ok(_libraryScanner.ListLibraries());
 
+    [HttpGet("OutputDirectories")]
+    public ActionResult<IReadOnlyList<OutputDirectoryOption>> OutputDirectories() => Ok(_fileStore.GetOutputDirectoryOptions());
+
     [HttpPost("Export")]
     public async Task<ActionResult<ExportStartResponse>> Export([FromBody] ExportRequest request)
     {
