@@ -13,14 +13,14 @@ public sealed class PackageMetadataTests
 
         Assert.Contains("name: \"Library Inventory Exporter\"", buildYaml);
         Assert.Contains("guid: \"7184fe02-8e91-4fd2-9140-6d58d5e91f0a\"", buildYaml);
-        Assert.Contains("version: \"0.1.3.0\"", buildYaml);
+        Assert.Contains("version: \"0.1.4.0\"", buildYaml);
         Assert.Contains("targetAbi: \"10.11.0.0\"", buildYaml);
         Assert.Contains("owner: \"dantech2000\"", buildYaml);
         Assert.Contains("repositoryName: \"Library Inventory Exporter\"", buildYaml);
         Assert.Contains("repositoryUrl: \"https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json\"", buildYaml);
         Assert.Contains("imageUrl: \"https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png\"", buildYaml);
-        Assert.Contains("<Version>0.1.3.0</Version>", project);
-        Assert.Contains("<AssemblyVersion>0.1.3.0</AssemblyVersion>", project);
+        Assert.Contains("<Version>0.1.4.0</Version>", project);
+        Assert.Contains("<AssemblyVersion>0.1.4.0</AssemblyVersion>", project);
         Assert.Contains("<NoWarn>$(NoWarn);CS1591</NoWarn>", project);
         Assert.Contains("<PackageReference Include=\"Jellyfin.Controller\" Version=\"10.11.3\">", project);
         Assert.Contains("Include=\"meta.json\" CopyToPublishDirectory=\"PreserveNewest\"", project);
