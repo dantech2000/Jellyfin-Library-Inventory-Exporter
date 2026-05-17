@@ -1,5 +1,7 @@
 using System.Collections;
+using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.LibraryInventoryExporter.Models;
+using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using Microsoft.Extensions.Logging;
 
@@ -7,6 +9,18 @@ namespace Jellyfin.Plugin.LibraryInventoryExporter.Services;
 
 public sealed class LibraryScanner
 {
+    private static readonly BaseItemKind[] SupportedItemKinds =
+    {
+        BaseItemKind.Movie,
+        BaseItemKind.Series,
+        BaseItemKind.Season,
+        BaseItemKind.Episode,
+        BaseItemKind.MusicAlbum,
+        BaseItemKind.Audio,
+        BaseItemKind.Video,
+        BaseItemKind.BoxSet
+    };
+
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
@@ -49,7 +63,7 @@ public sealed class LibraryScanner
                 CollectionType = GetString(library, "CollectionType")
             };
 
-            var items = GetChildren(library).Where(IsSupportedItem).ToList();
+            var items = GetItems(library).Where(IsSupportedItem).ToList();
             foreach (var item in items)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -108,6 +122,60 @@ public sealed class LibraryScanner
         }
 
         return Array.Empty<object>();
+    }
+
+    private IReadOnlyList<object> GetItems(object library)
+    {
+        var libraryId = GetGuid(library, "ItemId");
+        if (libraryId == Guid.Empty)
+        {
+            libraryId = GetGuid(library, "Id");
+        }
+
+        if (libraryId != Guid.Empty)
+        {
+            var items = QueryItems(libraryId, useTopParent: true);
+            if (items.Count > 0)
+            {
+                return items;
+            }
+
+            items = QueryItems(libraryId, useTopParent: false);
+            if (items.Count > 0)
+            {
+                return items;
+            }
+        }
+
+        return GetChildren(library).Where(IsSupportedItem).ToList();
+    }
+
+    private IReadOnlyList<object> QueryItems(Guid libraryId, bool useTopParent)
+    {
+        try
+        {
+            var query = new InternalItemsQuery
+            {
+                Recursive = true,
+                IncludeItemTypes = SupportedItemKinds
+            };
+
+            if (useTopParent)
+            {
+                query.TopParentIds = new[] { libraryId };
+            }
+            else
+            {
+                query.ParentId = libraryId;
+            }
+
+            return _libraryManager.GetItemList(query).Cast<object>().ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Unable to query inventory export items for library {LibraryId}", libraryId);
+            return Array.Empty<object>();
+        }
     }
 
     private IEnumerable<object> EnumerateTree(object root)
@@ -341,14 +409,21 @@ public sealed class LibraryScanner
 
     private static object? GetValue(object target, string name)
     {
-        var property = target.GetType().GetProperty(name);
-        if (property is not null)
+        try
         {
-            return property.GetValue(target);
-        }
+            var property = target.GetType().GetProperty(name);
+            if (property is not null)
+            {
+                return property.GetValue(target);
+            }
 
-        var method = target.GetType().GetMethod(name, Type.EmptyTypes);
-        return method?.Invoke(target, Array.Empty<object>());
+            var method = target.GetType().GetMethod(name, Type.EmptyTypes);
+            return method?.Invoke(target, Array.Empty<object>());
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string? GetString(object target, string name) => Convert.ToString(GetValue(target, name));

@@ -38,6 +38,7 @@ public sealed class InventoryExportService
         var exportId = _fileStore.CreateExportId(generatedAt);
         var exportDirectory = _fileStore.GetExportDirectory(exportId);
         Directory.CreateDirectory(exportDirectory);
+        _logger.LogInformation("Starting library inventory export {ExportId} in {ExportDirectory}", exportId, exportDirectory);
 
         try
         {
@@ -82,6 +83,7 @@ public sealed class InventoryExportService
             var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
             _retentionService.ApplyRetention(config.RetentionCount, config.RetentionDays, DateTimeOffset.UtcNow);
             SetStatus(false, exportId, "Completed", 100, entry.ItemCount, entry.ItemCount, null);
+            _logger.LogInformation("Completed library inventory export {ExportId}: {ItemCount} items, {LibraryCount} libraries, {ZipPath}", exportId, entry.ItemCount, entry.LibraryCount, zipPath);
             return entry;
         }
         catch (Exception ex)

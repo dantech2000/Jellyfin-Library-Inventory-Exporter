@@ -1,5 +1,6 @@
 (function () {
     const pluginId = '7184fe02-8e91-4fd2-9140-6d58d5e91f0a';
+    let statusTimer;
 
     function page() {
         return document.querySelector('#LibraryInventoryExporterConfigPage');
@@ -86,18 +87,51 @@
         });
     }
 
+    function renderStatus(status) {
+        const statusText = `${status.stage || 'Idle'} ${status.progressPercent || 0}%`;
+        page().querySelector('#exportStatus').innerText = status.errorMessage ? `${statusText}: ${status.errorMessage}` : statusText;
+
+        if (status.isRunning) {
+            scheduleStatusRefresh();
+            return;
+        }
+
+        clearStatusRefresh();
+        refreshExports();
+    }
+
+    function clearStatusRefresh() {
+        if (statusTimer) {
+            clearTimeout(statusTimer);
+            statusTimer = null;
+        }
+    }
+
+    function scheduleStatusRefresh() {
+        clearStatusRefresh();
+        statusTimer = setTimeout(refreshStatus, 2000);
+    }
+
+    function refreshStatus() {
+        return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Status') }).then(renderStatus);
+    }
+
+    function refreshExports() {
+        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Exports') }).then(exports => {
+            page().querySelector('#exportHistory').innerHTML = exports.length === 0
+                ? '<p>No exports yet.</p>'
+                : exports.map(item => `<p><a href="${ApiClient.getUrl('InventoryExporter/Exports/' + item.id + '/Download')}">${item.fileName}</a> ${item.itemCount} items <button is="emby-button" type="button" data-delete-export="${item.id}">Delete</button></p>`).join('');
+        });
+    }
+
     function refreshHistory() {
         ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/OutputDirectories') }).then(renderOutputDirectories);
         ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Libraries') }).then(libraries => {
             renderLibraries(libraries);
             updateLibraryPickerState();
         });
-        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Status') }).then(status => {
-            page().querySelector('#exportStatus').innerText = `${status.stage || 'Idle'} ${status.progressPercent || 0}%`;
-        });
-        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Exports') }).then(exports => {
-            page().querySelector('#exportHistory').innerHTML = exports.map(item => `<p><a href="${ApiClient.getUrl('InventoryExporter/Exports/' + item.id + '/Download')}">${item.fileName}</a> ${item.itemCount} items <button is="emby-button" type="button" data-delete-export="${item.id}">Delete</button></p>`).join('');
-        });
+        refreshStatus();
+        refreshExports();
     }
 
     document.addEventListener('pageshow', event => {
@@ -138,7 +172,10 @@
                 url: ApiClient.getUrl('InventoryExporter/Export'),
                 data: JSON.stringify({ formats: ['csv', 'json'], libraryIds: selectedLibraryIds() }),
                 contentType: 'application/json'
-            }).then(refreshHistory);
+            }).then(() => {
+                page().querySelector('#exportStatus').innerText = 'Starting export 0%';
+                scheduleStatusRefresh();
+            });
         }
 
         if (event.target.closest('#btnDownloadLatest')) {

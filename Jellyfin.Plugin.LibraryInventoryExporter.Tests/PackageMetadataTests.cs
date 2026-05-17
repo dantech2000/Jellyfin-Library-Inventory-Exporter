@@ -81,6 +81,9 @@ public sealed class PackageMetadataTests
         Assert.Contains("data-library-id", script);
         Assert.Contains("data-output-directory", script);
         Assert.Contains("selectedLibraryIds()", script);
+        Assert.Contains("scheduleStatusRefresh", script);
+        Assert.Contains("setTimeout(refreshStatus, 2000)", script);
+        Assert.Contains("No exports yet.", script);
         Assert.DoesNotContain("selectedOptions", script);
         Assert.DoesNotContain("#selLibraries", script);
         Assert.Contains("data-delete-export", script);
