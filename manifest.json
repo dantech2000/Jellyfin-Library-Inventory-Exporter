@@ -6,67 +6,77 @@
     "overview": "Export Jellyfin library inventory to CSV and JSON.",
     "owner": "dantech2000",
     "category": "General",
-    "imageUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png",
+    "imageUrl": "https://cdn.jsdelivr.net/gh/dantech2000/Jellyfin-Library-Inventory-Exporter@1da33db937d76f501545add141f767418285905b/assets/library-inventory-exporter.png",
     "versions": [
       {
+        "version": "0.1.7.0",
+        "changelog": "Fix export progress completion handling for fast exports and Jellyfin status casing. ",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.7.0/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.7.0.zip",
+        "checksum": "f7d6e08827a7fe0bad827d51843f7fe1",
+        "timestamp": "2026-05-17T07:23:21Z",
+        "repositoryName": "Library Inventory Exporter",
+        "repositoryUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter"
+      },
+      {
         "version": "0.1.6",
-        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
+        "changelog": "Fix export progress completion handling for fast exports and Jellyfin status casing. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.6/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.6.zip",
         "checksum": "8914ba651122ce51ce7b14fe8275d96d",
         "timestamp": "2026-05-17T07:12:39Z",
         "repositoryName": "Library Inventory Exporter",
-        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+        "repositoryUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter"
       },
       {
         "version": "0.1.5",
-        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
+        "changelog": "Fix export progress completion handling for fast exports and Jellyfin status casing. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.5/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.5.zip",
         "checksum": "aafca33067e290d716b7c7a7bb250245",
         "timestamp": "2026-05-17T07:02:38Z",
         "repositoryName": "Library Inventory Exporter",
-        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+        "repositoryUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter"
       },
       {
         "version": "0.1.4",
-        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
+        "changelog": "Fix export progress completion handling for fast exports and Jellyfin status casing. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.4/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.4.zip",
         "checksum": "d914015a6007410f9005a25b95696c1f",
         "timestamp": "2026-05-17T06:53:02Z",
         "repositoryName": "Library Inventory Exporter",
-        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+        "repositoryUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter"
       },
       {
         "version": "0.1.3",
-        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
+        "changelog": "Fix export progress completion handling for fast exports and Jellyfin status casing. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.3/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.3.zip",
         "checksum": "5fc472a6e5ae351f4529f5de6854db7b",
         "timestamp": "2026-05-17T06:29:10Z",
         "repositoryName": "Library Inventory Exporter",
-        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+        "repositoryUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter"
       },
       {
         "version": "0.1.2",
-        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
+        "changelog": "Fix export progress completion handling for fast exports and Jellyfin status casing. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.2/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.2.zip",
         "checksum": "eeed3921962b104c8e2a83b536bd855d",
         "timestamp": "2026-05-17T06:21:02Z",
         "repositoryName": "Library Inventory Exporter",
-        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+        "repositoryUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter"
       },
       {
         "version": "0.1.1",
-        "changelog": "Fix plugin image persistence after restart and add export progress notifications. ",
+        "changelog": "Fix export progress completion handling for fast exports and Jellyfin status casing. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.1/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.1.zip",
         "checksum": "0c00402c2cd6e652e219b8dbcd4b63fd",
         "timestamp": "2026-05-16T23:16:16Z",
         "repositoryName": "Library Inventory Exporter",
-        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+        "repositoryUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter"
       },
       {
         "version": "0.1.0",
@@ -76,7 +86,7 @@
         "checksum": "a5065e2272d9d280ee47c2f1aecc0f33",
         "timestamp": "2026-05-16T22:57:53Z",
         "repositoryName": "Library Inventory Exporter",
-        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+        "repositoryUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter"
       }
     ]
   }
