@@ -52,8 +52,10 @@ public sealed class LibraryScannerTests
         var manifest = await scanner.ScanAsync(new ExportOptions(), (_, _, _) => { }, CancellationToken.None);
 
         var library = Assert.Single(manifest.Libraries);
+        Assert.Equal(libraryId.ToString("N"), library.Id);
         Assert.Equal("Movies", library.Name);
         var item = Assert.Single(library.Items);
+        Assert.Equal(libraryId.ToString("N"), item.LibraryId);
         Assert.Equal(movieId.ToString("N"), item.Id);
         Assert.Equal("The Matrix", item.Name);
     }
@@ -107,8 +109,36 @@ public sealed class LibraryScannerTests
         var manifest = await scanner.ScanAsync(new ExportOptions(), (_, _, _) => { }, CancellationToken.None);
 
         var library = Assert.Single(manifest.Libraries);
+        Assert.Equal(libraryId.ToString("N"), library.Id);
         var item = Assert.Single(library.Items);
+        Assert.Equal(libraryId.ToString("N"), item.LibraryId);
         Assert.Equal(movieId.ToString("N"), item.Id);
         Assert.Equal("The Matrix", item.Name);
+    }
+
+    [Fact]
+    public void ListLibraries_UsesVirtualFolderItemId()
+    {
+        var libraryId = Guid.NewGuid();
+        var libraryManager = new Mock<ILibraryManager>();
+        libraryManager
+            .Setup(l => l.GetVirtualFolders())
+            .Returns(new List<VirtualFolderInfo>
+            {
+                new()
+                {
+                    ItemId = libraryId.ToString("N"),
+                    Name = "Movies"
+                }
+            });
+
+        var scanner = new LibraryScanner(
+            libraryManager.Object,
+            Mock.Of<IUserManager>(),
+            Mock.Of<IUserDataManager>(),
+            NullLogger<LibraryScanner>.Instance);
+
+        var library = Assert.Single(scanner.ListLibraries());
+        Assert.Equal(libraryId.ToString("N"), library.Id);
     }
 }

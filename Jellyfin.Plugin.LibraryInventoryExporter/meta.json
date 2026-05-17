@@ -1,0 +1,17 @@
+{
+  "category": "General",
+  "changelog": "Packaged plugin metadata.",
+  "description": "Export a readable inventory manifest of Jellyfin libraries, media files, metadata provider IDs, media streams, and optional user watch state.",
+  "id": "7184fe02-8e91-4fd2-9140-6d58d5e91f0a",
+  "name": "Library Inventory Exporter",
+  "overview": "Export Jellyfin library inventory to CSV and JSON.",
+  "owner": "dantech2000",
+  "targetAbi": "10.11.0.0",
+  "version": "0.1.3.0",
+  "status": "Active",
+  "autoUpdate": true,
+  "imagePath": "library-inventory-exporter.png",
+  "assemblies": [
+    "Jellyfin.Plugin.LibraryInventoryExporter.dll"
+  ]
+}

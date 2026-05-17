@@ -23,6 +23,8 @@ public sealed class PackageMetadataTests
         Assert.Contains("<AssemblyVersion>0.1.3.0</AssemblyVersion>", project);
         Assert.Contains("<NoWarn>$(NoWarn);CS1591</NoWarn>", project);
         Assert.Contains("<PackageReference Include=\"Jellyfin.Controller\" Version=\"10.11.3\">", project);
+        Assert.Contains("Include=\"meta.json\" CopyToPublishDirectory=\"PreserveNewest\"", project);
+        Assert.Contains("Link=\"library-inventory-exporter.png\" CopyToPublishDirectory=\"PreserveNewest\"", project);
     }
 
     [Fact]
@@ -85,6 +87,8 @@ public sealed class PackageMetadataTests
         Assert.Contains("setTimeout(refreshStatus, 2000)", script);
         Assert.Contains("Export Running", script);
         Assert.Contains("No exports yet.", script);
+        Assert.Contains("getDownloadUrl", script);
+        Assert.Contains("api_key=", script);
         Assert.DoesNotContain("selectedOptions", script);
         Assert.DoesNotContain("#selLibraries", script);
         Assert.Contains("data-delete-export", script);
@@ -114,8 +118,11 @@ public sealed class PackageMetadataTests
     {
         var root = TestPaths.RepositoryRoot();
         var imagePath = Path.Combine(root, "assets", "library-inventory-exporter.png");
+        var metaJson = File.ReadAllText(Path.Combine(root, "Jellyfin.Plugin.LibraryInventoryExporter", "meta.json"));
 
         Assert.True(File.Exists(imagePath));
         Assert.True(new FileInfo(imagePath).Length > 10_000);
+        Assert.Contains("\"imagePath\": \"library-inventory-exporter.png\"", metaJson);
+        Assert.Contains("\"id\": \"7184fe02-8e91-4fd2-9140-6d58d5e91f0a\"", metaJson);
     }
 }

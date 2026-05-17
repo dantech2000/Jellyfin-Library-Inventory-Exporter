@@ -77,6 +77,32 @@
         return Array.from(page().querySelectorAll('.chkLibrary:checked')).map(input => input.getAttribute('data-library-id'));
     }
 
+    function getAccessToken() {
+        if (typeof ApiClient.accessToken === 'function') {
+            return ApiClient.accessToken();
+        }
+
+        if (typeof ApiClient.accessToken === 'string') {
+            return ApiClient.accessToken;
+        }
+
+        if (ApiClient._serverInfo && ApiClient._serverInfo.AccessToken) {
+            return ApiClient._serverInfo.AccessToken;
+        }
+
+        return '';
+    }
+
+    function getDownloadUrl(route) {
+        const url = ApiClient.getUrl(route);
+        const token = getAccessToken();
+        if (!token) {
+            return url;
+        }
+
+        return url + (url.indexOf('?') === -1 ? '?' : '&') + 'api_key=' + encodeURIComponent(token);
+    }
+
     function updateLibraryPickerState() {
         const allLibraries = page().querySelector('#chkAllLibraries').checked;
         page().querySelectorAll('.chkLibrary').forEach(input => {
@@ -127,7 +153,7 @@
         ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Exports') }).then(exports => {
             page().querySelector('#exportHistory').innerHTML = exports.length === 0
                 ? '<p>No exports yet.</p>'
-                : exports.map(item => `<p><a href="${ApiClient.getUrl('InventoryExporter/Exports/' + item.id + '/Download')}">${item.fileName}</a> ${item.itemCount} items <button is="emby-button" type="button" data-delete-export="${item.id}">Delete</button></p>`).join('');
+                : exports.map(item => `<p><a href="${getDownloadUrl('InventoryExporter/Exports/' + item.id + '/Download')}">${item.fileName}</a> ${item.itemCount} items <button is="emby-button" type="button" data-delete-export="${item.id}">Delete</button></p>`).join('');
         });
     }
 
@@ -187,7 +213,7 @@
         }
 
         if (event.target.closest('#btnDownloadLatest')) {
-            window.location.href = ApiClient.getUrl('InventoryExporter/Exports/Latest');
+            window.location.href = getDownloadUrl('InventoryExporter/Exports/Latest');
         }
 
         const outputDirectoryButton = event.target.closest('[data-output-directory]');

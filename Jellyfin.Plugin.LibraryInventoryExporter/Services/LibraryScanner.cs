@@ -48,7 +48,7 @@ public sealed class LibraryScanner
         };
 
         var libraries = GetLibraries()
-            .Where(l => options.LibraryIds.Count == 0 || options.LibraryIds.Contains(GetGuid(l, "Id")))
+            .Where(l => options.LibraryIds.Count == 0 || options.LibraryIds.Contains(GetLibraryGuid(l)))
             .ToList();
         var allItems = new Lazy<IReadOnlyList<object>>(QueryAllItems);
         var processed = 0;
@@ -57,7 +57,7 @@ public sealed class LibraryScanner
         foreach (var library in libraries)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var libraryId = GetGuid(library, "Id").ToString("N");
+            var libraryId = GetLibraryGuid(library).ToString("N");
             var inventoryLibrary = new InventoryLibrary
             {
                 Id = libraryId,
@@ -87,7 +87,7 @@ public sealed class LibraryScanner
         return GetLibraries()
             .Select(l => new LibraryOption
             {
-                Id = GetGuid(l, "Id").ToString("N"),
+                Id = GetLibraryGuid(l).ToString("N"),
                 Name = GetString(l, "Name") ?? "Unknown",
                 CollectionType = GetString(l, "CollectionType")
             })
@@ -130,11 +130,7 @@ public sealed class LibraryScanner
     private IReadOnlyList<object> GetItems(object library, Lazy<IReadOnlyList<object>> allItems)
     {
         var libraryName = GetString(library, "Name") ?? "Unknown";
-        var libraryId = GetGuid(library, "ItemId");
-        if (libraryId == Guid.Empty)
-        {
-            libraryId = GetGuid(library, "Id");
-        }
+        var libraryId = GetLibraryGuid(library);
 
         var locations = GetStringArray(library, "Locations")
             .Where(location => !string.IsNullOrWhiteSpace(location))
@@ -505,6 +501,12 @@ public sealed class LibraryScanner
 
     private static string? GetString(object target, string name) => Convert.ToString(GetValue(target, name));
     private static IEnumerable<string> GetStringArray(object target, string name) => GetValue(target, name) is IEnumerable values ? values.Cast<object>().Select(value => Convert.ToString(value) ?? string.Empty) : Array.Empty<string>();
+    private static Guid GetLibraryGuid(object target)
+    {
+        var itemId = GetGuid(target, "ItemId");
+        return itemId == Guid.Empty ? GetGuid(target, "Id") : itemId;
+    }
+
     private static Guid GetGuid(object target, string name) => Guid.TryParse(Convert.ToString(GetValue(target, name)), out var guid) ? guid : Guid.Empty;
     private static int? GetInt(object target, string name) => int.TryParse(Convert.ToString(GetValue(target, name)), out var value) ? value : null;
     private static long? GetLong(object target, string name) => long.TryParse(Convert.ToString(GetValue(target, name)), out var value) ? value : null;
