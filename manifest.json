@@ -9,8 +9,18 @@
     "imageUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/main/assets/library-inventory-exporter.png",
     "versions": [
       {
+        "version": "0.1.2",
+        "changelog": "Add writable output directory defaults and suggestions. ",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.2/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.2.zip",
+        "checksum": "eeed3921962b104c8e2a83b536bd855d",
+        "timestamp": "2026-05-17T06:21:02Z",
+        "repositoryName": "Library Inventory Exporter",
+        "repositoryUrl": "https://raw.githubusercontent.com/dantech2000/Jellyfin-Library-Inventory-Exporter/gh-pages/manifest.json"
+      },
+      {
         "version": "0.1.1",
-        "changelog": "Fix the library selector on the plugin configuration page. ",
+        "changelog": "Add writable output directory defaults and suggestions. ",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter/releases/download/v0.1.1/Jellyfin.Plugin.LibraryInventoryExporter.v0.1.1.zip",
         "checksum": "0c00402c2cd6e652e219b8dbcd4b63fd",
