@@ -16,28 +16,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Check tag matches the plugin version
+        run: |
+          version="$(sed -n 's:.*<PluginVersion>\(.*\)</PluginVersion>.*:\1:p' Directory.Build.props)"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match PluginVersion ${version} in Directory.Build.props" >&2
+            exit 1
+          fi
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: |
+            9.0.x
+            10.0.x
 
       - name: Restore
         run: dotnet restore
 
+      # One build per Jellyfin line: net9.0 for 10.11, net10.0 for 12.0.
       - name: Publish
-        run: dotnet publish ./Jellyfin.Plugin.LibraryInventoryExporter/Jellyfin.Plugin.LibraryInventoryExporter.csproj -c Release -o ./dist/plugin
+        run: |
+          for tfm in net9.0 net10.0; do
+            dotnet publish ./Jellyfin.Plugin.LibraryInventoryExporter/Jellyfin.Plugin.LibraryInventoryExporter.csproj \
+              --configuration Release --framework "$tfm" --no-restore --output "./dist/publish/$tfm"
+          done
 
       - name: Package
         run: |
-          cd ./dist/plugin
-          zip -r ../Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip .
-          cd ..
-          md5sum Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip | awk '{ print $1 }' > Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip.md5
+          python3 tools/package_plugin.py dist/publish/net9.0 dist/packages
+          python3 tools/package_plugin.py dist/publish/net10.0 dist/packages
+
+      # The manifest workflow uses the release notes as each catalog version's changelog.
+      - name: Write release notes
+        run: python3 -c 'import sys; sys.path.insert(0, "tools"); from generate_manifest import read_build; print(read_build("build.yaml")["changelog"].strip())' > dist/release-notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: dist/release-notes.md
           files: |
-            dist/Jellyfin.Plugin.LibraryInventoryExporter.${{ github.ref_name }}.zip
-            dist/Jellyfin.Plugin.LibraryInventoryExporter.${{ github.ref_name }}.zip.md5
+            dist/packages/*.zip
+            dist/packages/*.zip.md5
             build.yaml

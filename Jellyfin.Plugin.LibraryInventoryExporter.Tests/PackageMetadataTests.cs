@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Xml.Linq;
 using Xunit;
 
 namespace Jellyfin.Plugin.LibraryInventoryExporter.Tests;
@@ -5,7 +7,7 @@ namespace Jellyfin.Plugin.LibraryInventoryExporter.Tests;
 public sealed class PackageMetadataTests
 {
     [Fact]
-    public void BuildYaml_MatchesProjectIdentityAndTarget()
+    public void BuildYaml_MatchesProjectIdentity()
     {
         var root = TestPaths.RepositoryRoot();
         var buildYaml = File.ReadAllText(Path.Combine(root, "build.yaml"));
@@ -13,8 +15,9 @@ public sealed class PackageMetadataTests
 
         Assert.Contains("name: \"Library Inventory Exporter\"", buildYaml);
         Assert.Contains("guid: \"7184fe02-8e91-4fd2-9140-6d58d5e91f0a\"", buildYaml);
-        Assert.Contains("version: \"0.1.7.0\"", buildYaml);
-        Assert.Contains("targetAbi: \"10.11.0.0\"", buildYaml);
+        Assert.Contains($"version: \"{PluginVersion(root)}\"", buildYaml);
+        Assert.DoesNotContain("targetAbi:", buildYaml);
+        Assert.DoesNotContain("framework:", buildYaml);
         Assert.Contains("owner: \"dantech2000\"", buildYaml);
         Assert.Contains("repositoryName: \"Library Inventory Exporter\"", buildYaml);
         Assert.Contains("repositoryUrl: \"https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter\"", buildYaml);
@@ -22,16 +25,55 @@ public sealed class PackageMetadataTests
         Assert.Contains("/assets/library-inventory-exporter.png\"", buildYaml);
         Assert.Contains("- \"meta.json\"", buildYaml);
         Assert.Contains("- \"library-inventory-exporter.png\"", buildYaml);
-        Assert.Contains("<Version>0.1.7.0</Version>", project);
-        Assert.Contains("<AssemblyVersion>0.1.7.0</AssemblyVersion>", project);
+        Assert.Contains("<TargetFrameworks>net9.0;net10.0</TargetFrameworks>", project);
+        Assert.Contains("<Version>$(PluginVersion).$(JellyfinAbiRevision)</Version>", project);
         Assert.Contains("<NoWarn>$(NoWarn);CS1591</NoWarn>", project);
-        Assert.Contains("<PackageReference Include=\"Jellyfin.Controller\" Version=\"10.11.3\">", project);
-        Assert.Contains("Include=\"meta.json\" CopyToPublishDirectory=\"PreserveNewest\"", project);
+        Assert.Contains("<FrameworkReference Include=\"Microsoft.AspNetCore.App\" />", project);
+        Assert.Contains("<PackageReference Include=\"Jellyfin.Controller\" Version=\"$(JellyfinVersion)\">", project);
+        Assert.Contains("<PackageReference Include=\"Jellyfin.Model\" Version=\"$(JellyfinVersion)\">", project);
         Assert.Contains("Link=\"library-inventory-exporter.png\" CopyToPublishDirectory=\"PreserveNewest\"", project);
+        Assert.Contains("<Target Name=\"WritePluginMeta\" AfterTargets=\"Build\"", project);
+        Assert.Contains("<Target Name=\"PublishPluginMeta\" AfterTargets=\"Publish\"", project);
+    }
+
+    [Theory]
+    [InlineData("net9.0", "10.11.11", "10.11.0.0", "10")]
+    [InlineData("net10.0", "12.0.0", "12.0.0.0", "12")]
+    public void BuildProps_MapEachTargetFrameworkToOneJellyfinLine(string targetFramework, string jellyfinVersion, string targetAbi, string revision)
+    {
+        var props = XDocument.Load(Path.Combine(TestPaths.RepositoryRoot(), "Directory.Build.props"));
+        var group = Assert.Single(
+            props.Root!.Elements("PropertyGroup"),
+            g => (string?)g.Attribute("Condition") == $"'$(TargetFramework)' == '{targetFramework}'");
+
+        Assert.Equal(jellyfinVersion, group.Element("JellyfinVersion")?.Value);
+        Assert.Equal(targetAbi, group.Element("JellyfinTargetAbi")?.Value);
+        Assert.Equal(revision, group.Element("JellyfinAbiRevision")?.Value);
     }
 
     [Fact]
-    public void Workflows_CoverCiReleaseChecksumsAndManifestPublishing()
+    public void BuiltPlugin_CarriesTheVersionAndTargetAbiOfItsJellyfinLine()
+    {
+#if NET10_0_OR_GREATER
+        const int revision = 12;
+        const string targetAbi = "12.0.0.0";
+#else
+        const int revision = 10;
+        const string targetAbi = "10.11.0.0";
+#endif
+        var root = TestPaths.RepositoryRoot();
+        var assemblyVersion = typeof(Plugin).Assembly.GetName().Version!;
+        var testOutput = new DirectoryInfo(Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory));
+        var metaPath = Path.Combine(root, "Jellyfin.Plugin.LibraryInventoryExporter", "bin", testOutput.Parent!.Name, testOutput.Name, "meta.json");
+        using var meta = JsonDocument.Parse(File.ReadAllText(metaPath));
+
+        Assert.Equal(new Version(PluginVersion(root) + "." + revision), assemblyVersion);
+        Assert.Equal(assemblyVersion.ToString(), meta.RootElement.GetProperty("version").GetString());
+        Assert.Equal(targetAbi, meta.RootElement.GetProperty("targetAbi").GetString());
+    }
+
+    [Fact]
+    public void Workflows_CoverCiE2eReleaseChecksumsAndManifestPublishing()
     {
         var root = TestPaths.RepositoryRoot();
         var ci = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
@@ -40,16 +82,26 @@ public sealed class PackageMetadataTests
 
         Assert.Contains("actions/checkout@v5", ci);
         Assert.Contains("actions/setup-dotnet@v5", ci);
+        Assert.Contains("9.0.x", ci);
+        Assert.Contains("10.0.x", ci);
         Assert.Contains("dotnet restore", ci);
         Assert.Contains("dotnet build --configuration Release --no-restore", ci);
         Assert.Contains("dotnet test --configuration Release --no-build", ci);
+        Assert.Contains("jellyfin: [\"10.11\", \"12\"]", ci);
+        Assert.Contains("./e2e/run.sh ${{ matrix.jellyfin }}", ci);
+        Assert.Contains("actions/upload-artifact@", ci);
         Assert.DoesNotContain("actions/checkout@v4", ci);
         Assert.DoesNotContain("actions/setup-dotnet@v4", ci);
         Assert.Contains("actions/checkout@v5", release);
         Assert.Contains("actions/setup-dotnet@v5", release);
+        Assert.Contains("9.0.x", release);
+        Assert.Contains("10.0.x", release);
+        Assert.Contains("<PluginVersion>", release);
+        Assert.Contains("for tfm in net9.0 net10.0", release);
         Assert.Contains("dotnet publish ./Jellyfin.Plugin.LibraryInventoryExporter/Jellyfin.Plugin.LibraryInventoryExporter.csproj", release);
-        Assert.Contains("zip -r ../Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip", release);
-        Assert.Contains("md5sum Jellyfin.Plugin.LibraryInventoryExporter.${GITHUB_REF_NAME}.zip", release);
+        Assert.Contains("python3 tools/package_plugin.py dist/publish/net9.0 dist/packages", release);
+        Assert.Contains("python3 tools/package_plugin.py dist/publish/net10.0 dist/packages", release);
+        Assert.Contains("dist/packages/*.zip.md5", release);
         Assert.Contains("softprops/action-gh-release@v2", release);
         Assert.DoesNotContain("actions/checkout@v4", release);
         Assert.DoesNotContain("actions/setup-dotnet@v4", release);
@@ -66,6 +118,18 @@ public sealed class PackageMetadataTests
         Assert.DoesNotContain("actions/setup-python@v5", publish);
     }
 
+    [Theory]
+    [InlineData("10.11", "net9.0", "jellyfin/jellyfin:10.11.")]
+    [InlineData("12", "net10.0", "jellyfin/jellyfin:12.0")]
+    public void E2eEnvironment_PairsEachJellyfinImageWithItsPluginBuild(string line, string targetFramework, string imagePrefix)
+    {
+        var env = File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot(), "e2e", "env", line + ".env"));
+
+        Assert.Contains($"JELLYFIN_LINE={line}\n", env);
+        Assert.Contains($"PLUGIN_TFM={targetFramework}\n", env);
+        Assert.Contains($"JELLYFIN_IMAGE={imagePrefix}", env);
+    }
+
     [Fact]
     public void PluginAdminPage_WiresRequiredEndpoints()
     {
@@ -79,7 +143,12 @@ public sealed class PackageMetadataTests
         Assert.Contains("id=\"outputDirectoryOptions\"", html);
         Assert.Contains("id=\"exportProgress\"", html);
         Assert.Contains("role=\"progressbar\"", html);
+        Assert.Contains("id=\"inventoryExporterError\"", html);
+        Assert.Contains("id=\"outputDirectoryWarning\"", html);
         Assert.DoesNotContain("id=\"selLibraries\"", html);
+        Assert.Contains("dataType: 'json'", script);
+        Assert.Contains("camelCaseKeys", script);
+        Assert.Contains("reportError(", script);
         Assert.Contains("InventoryExporter/Export", script);
         Assert.Contains("InventoryExporter/Exports", script);
         Assert.Contains("InventoryExporter/Exports/Latest", script);
@@ -102,7 +171,8 @@ public sealed class PackageMetadataTests
         Assert.Contains("Library inventory export failed", script);
         Assert.Contains("No exports yet.", script);
         Assert.Contains("getDownloadUrl", script);
-        Assert.Contains("api_key=", script);
+        Assert.Contains("ApiKey=", script);
+        Assert.DoesNotContain("api_key=", script);
         Assert.DoesNotContain("selectedOptions", script);
         Assert.DoesNotContain("#selLibraries", script);
         Assert.Contains("data-delete-export", script);
@@ -141,13 +211,22 @@ public sealed class PackageMetadataTests
     }
 
     [Fact]
-    public void PackagedManifest_DoesNotOverrideCatalogImageDownload()
+    public void PackagedManifest_IsResolvedPerBuildAndDoesNotOverrideCatalogImageDownload()
     {
         var root = TestPaths.RepositoryRoot();
         var metaJson = File.ReadAllText(Path.Combine(root, "Jellyfin.Plugin.LibraryInventoryExporter", "meta.json"));
 
+        Assert.Contains("\"version\": \"@PLUGIN_VERSION@\"", metaJson);
+        Assert.Contains("\"targetAbi\": \"@TARGET_ABI@\"", metaJson);
         Assert.Contains("\"autoUpdate\": true", metaJson);
         Assert.DoesNotContain("\"imagePath\"", metaJson);
         Assert.DoesNotContain("\"imageUrl\"", metaJson);
     }
+
+    private static string PluginVersion(string root)
+        => XDocument.Load(Path.Combine(root, "Directory.Build.props")).Root!
+            .Elements("PropertyGroup")
+            .Elements("PluginVersion")
+            .Single()
+            .Value;
 }

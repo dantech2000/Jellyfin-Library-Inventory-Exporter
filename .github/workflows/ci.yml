@@ -17,7 +17,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: |
+            9.0.x
+            10.0.x
 
       - name: Restore
         run: dotnet restore
@@ -27,3 +29,30 @@ jobs:
 
       - name: Test
         run: dotnet test --configuration Release --no-build
+
+  e2e:
+    name: E2E (Jellyfin ${{ matrix.jellyfin }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        jellyfin: ["10.11", "12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Run Docker + Playwright suite
+        run: ./e2e/run.sh ${{ matrix.jellyfin }}
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-jellyfin-${{ matrix.jellyfin }}
+          path: |
+            e2e/playwright-report/${{ matrix.jellyfin }}
+            e2e/test-results/${{ matrix.jellyfin }}
+          retention-days: 14

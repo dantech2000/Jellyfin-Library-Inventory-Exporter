@@ -1,6 +1,6 @@
-.DS_Store
-bin/
-obj/
+.git/
+**/bin/
+**/obj/
 dist/
 TestResults/
 e2e/node_modules/

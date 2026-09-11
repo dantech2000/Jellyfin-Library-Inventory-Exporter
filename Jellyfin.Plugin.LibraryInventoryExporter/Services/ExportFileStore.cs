@@ -26,6 +26,15 @@ public sealed class ExportFileStore
 
     public string GetDefaultOutputDirectory() => Path.GetFullPath(Path.Combine(_paths.DataPath, DefaultDirectoryName));
 
+    /// <summary>
+    /// Checks that Jellyfin can create files in the configured output directory, or in its parent when the directory does not exist yet.
+    /// </summary>
+    public bool CanWriteOutputDirectory(out string outputDirectory)
+    {
+        outputDirectory = ResolveOutputDirectory();
+        return CanWriteToDirectory(outputDirectory);
+    }
+
     public IReadOnlyList<OutputDirectoryOption> GetOutputDirectoryOptions()
     {
         var current = ResolveOutputDirectory();
@@ -96,6 +105,8 @@ public sealed class ExportFileStore
 
     public ExportHistoryEntry? GetLatest() => ListExports().FirstOrDefault();
 
+    public bool ExportExists(string exportId) => File.Exists(GetZipPath(exportId));
+
     public FileStream OpenRead(string exportId)
     {
         var path = GetZipPath(exportId);
@@ -128,12 +139,23 @@ public sealed class ExportFileStore
             deleted = true;
         }
 
+        // Versions before 0.1.8 left the unzipped export next to the archive.
+        var stagingDirectory = Path.Combine(ResolveOutputDirectory(), ExportPrefix + exportId);
+        if (Directory.Exists(stagingDirectory))
+        {
+            Directory.Delete(stagingDirectory, recursive: true);
+            deleted = true;
+        }
+
         return deleted;
     }
 
+    public static bool IsValidExportId(string exportId)
+        => !string.IsNullOrWhiteSpace(exportId) && exportId.All(c => char.IsDigit(c) || c == 'T' || c == 'Z' || c == '-');
+
     public static void EnsureValidExportId(string exportId)
     {
-        if (string.IsNullOrWhiteSpace(exportId) || exportId.Any(c => !(char.IsDigit(c) || c == 'T' || c == 'Z' || c == '-')))
+        if (!IsValidExportId(exportId))
         {
             throw new ArgumentException("Invalid export id.", nameof(exportId));
         }

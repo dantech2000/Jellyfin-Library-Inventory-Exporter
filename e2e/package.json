@@ -1,0 +1,16 @@
+{
+  "name": "library-inventory-exporter-e2e",
+  "private": true,
+  "description": "Docker + Playwright end-to-end tests for the Library Inventory Exporter Jellyfin plugin",
+  "scripts": {
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^22.20.2",
+    "adm-zip": "^0.6.0",
+    "typescript": "^7.0.2"
+  }
+}
