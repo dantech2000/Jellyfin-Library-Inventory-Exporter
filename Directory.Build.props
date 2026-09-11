@@ -1,0 +1,22 @@
+<Project>
+  <PropertyGroup>
+    <PluginVersion>0.1.8</PluginVersion>
+  </PropertyGroup>
+
+  <!--
+    One plugin build per Jellyfin server line. The version revision encodes the line
+    (0.1.8.10, 0.1.8.12) so the plugin catalog always offers 12.0 servers the 12.0 build:
+    Jellyfin installs the highest version whose targetAbi is not newer than the server.
+  -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <JellyfinVersion>10.11.11</JellyfinVersion>
+    <JellyfinTargetAbi>10.11.0.0</JellyfinTargetAbi>
+    <JellyfinAbiRevision>10</JellyfinAbiRevision>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <JellyfinVersion>12.0.0</JellyfinVersion>
+    <JellyfinTargetAbi>12.0.0.0</JellyfinTargetAbi>
+    <JellyfinAbiRevision>12</JellyfinAbiRevision>
+  </PropertyGroup>
+</Project>

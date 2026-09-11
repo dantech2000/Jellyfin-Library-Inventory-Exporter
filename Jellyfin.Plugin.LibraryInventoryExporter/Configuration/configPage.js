@@ -4,6 +4,14 @@
     let activeExportId = '';
     let lastNotifiedExportId = '';
 
+    // Hints for failed requests that come without a message from the server.
+    const httpErrorHints = {
+        401: 'Your Jellyfin session has ended. Sign in again.',
+        403: 'Only Jellyfin administrators can use the Library Inventory Exporter.',
+        404: 'The server could not find what the page asked for. Refresh the page.',
+        500: 'The Jellyfin server hit an error. Check the Jellyfin log for details.'
+    };
+
     function page() {
         return document.querySelector('#LibraryInventoryExporterConfigPage');
     }
@@ -31,6 +39,64 @@
         })[character]);
     }
 
+    // Jellyfin serializes plugin API responses in PascalCase. The page reads them in camelCase.
+    function camelCaseKeys(value) {
+        if (Array.isArray(value)) {
+            return value.map(camelCaseKeys);
+        }
+
+        if (value && typeof value === 'object') {
+            return Object.keys(value).reduce((result, key) => {
+                result[key.charAt(0).toLowerCase() + key.slice(1)] = camelCaseKeys(value[key]);
+                return result;
+            }, {});
+        }
+
+        return value;
+    }
+
+    function getJson(route) {
+        return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl(route), dataType: 'json' }).then(camelCaseKeys);
+    }
+
+    function showError(message) {
+        const panel = page().querySelector('#inventoryExporterError');
+        panel.innerText = message;
+        panel.hidden = false;
+        panel.scrollIntoView({ block: 'nearest' });
+    }
+
+    function clearError() {
+        const panel = page().querySelector('#inventoryExporterError');
+        panel.innerText = '';
+        panel.hidden = true;
+    }
+
+    // ApiClient rejects with the fetch Response for HTTP errors and with an Error when the server is unreachable.
+    function describeError(error) {
+        if (!error || typeof error.status !== 'number') {
+            return Promise.resolve((error && error.message) || 'The Jellyfin server did not answer. Check that it is running, then refresh the page.');
+        }
+
+        const fallback = httpErrorHints[error.status] || `The server answered with HTTP ${error.status}.`;
+        if (typeof error.text !== 'function') {
+            return Promise.resolve(fallback);
+        }
+
+        return error.text().then(body => {
+            try {
+                const problem = JSON.parse(body);
+                return problem.detail || problem.Detail || problem.title || problem.Title || fallback;
+            } catch (parseError) {
+                return fallback;
+            }
+        }, () => fallback);
+    }
+
+    function reportError(action, error) {
+        return describeError(error).then(reason => showError(`${action}: ${reason}`));
+    }
+
     function renderLibraries(libraries) {
         const list = page().querySelector('#libraryList');
         if (!libraries || libraries.length === 0) {
@@ -50,8 +116,18 @@
         const input = page().querySelector('#txtOutputDirectory');
         const help = page().querySelector('#outputDirectoryHelp');
         const container = page().querySelector('#outputDirectoryOptions');
+        const warning = page().querySelector('#outputDirectoryWarning');
+        const currentOption = (options || []).find(option => option.isCurrent);
         const writableOptions = (options || []).filter(option => option.isWritable !== false);
         const defaultOption = writableOptions.find(option => option.isDefault) || writableOptions[0];
+
+        if (currentOption && currentOption.isWritable === false) {
+            warning.innerText = `Jellyfin cannot write to ${currentOption.path}. Exports will fail until you choose a directory that the server can write to and save the settings.`;
+            warning.hidden = false;
+        } else {
+            warning.innerText = '';
+            warning.hidden = true;
+        }
 
         if (!input.value && defaultOption) {
             input.value = defaultOption.path;
@@ -102,7 +178,7 @@
             return url;
         }
 
-        return url + (url.indexOf('?') === -1 ? '?' : '&') + 'api_key=' + encodeURIComponent(token);
+        return url + (url.indexOf('?') === -1 ? '?' : '&') + 'ApiKey=' + encodeURIComponent(token);
     }
 
     function updateLibraryPickerState() {
@@ -190,6 +266,8 @@
         }
     }
 
+    // Toasts only for exports started or seen running on this page. A failed export also stays in the error panel,
+    // so an administrator who opens the page later still sees why the last export failed.
     function maybeNotifyExportFinished(rawStatus) {
         const status = normalizeStatus(rawStatus);
         const exportId = status.exportId || activeExportId;
@@ -197,21 +275,32 @@
             return;
         }
 
+        const watched = exportId === activeExportId;
+        lastNotifiedExportId = exportId;
+
         if (status.errorMessage || status.stage === 'Failed') {
-            showToast(`Library inventory export failed: ${status.errorMessage || 'Unknown error'}`);
-            lastNotifiedExportId = exportId;
+            const message = `Library inventory export failed: ${status.errorMessage || 'Unknown error'}`;
+            if (watched) {
+                showToast(message);
+            }
+
+            showError(message);
             return;
         }
 
-        if (status.stage === 'Completed' || clampPercent(status.progressPercent) === 100) {
+        if (watched && (status.stage === 'Completed' || clampPercent(status.progressPercent) === 100)) {
             showToast('Library inventory export completed.');
-            lastNotifiedExportId = exportId;
         }
     }
 
     function renderStatus(rawStatus) {
         const status = normalizeStatus(rawStatus);
         renderProgress(status);
+
+        if (status.isRunning) {
+            activeExportId = status.exportId || activeExportId;
+        }
+
         maybeNotifyExportFinished(status);
 
         const percent = clampPercent(status.progressPercent);
@@ -220,7 +309,6 @@
         setExportButtonRunning(status.isRunning === true);
 
         if (status.isRunning) {
-            activeExportId = status.exportId || activeExportId;
             scheduleStatusRefresh();
             return;
         }
@@ -247,23 +335,33 @@
     }
 
     function refreshStatus() {
-        return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Status') }).then(renderStatus);
+        return getJson('InventoryExporter/Status').then(renderStatus, error => {
+            reportError('Could not load the export status', error);
+            if (activeExportId) {
+                // Keep following a running export through short outages.
+                scheduleStatusRefresh();
+            }
+        });
     }
 
     function refreshExports() {
-        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Exports') }).then(exports => {
+        return getJson('InventoryExporter/Exports').then(exports => {
             page().querySelector('#exportHistory').innerHTML = exports.length === 0
                 ? '<p>No exports yet.</p>'
-                : exports.map(item => `<p><a href="${getDownloadUrl('InventoryExporter/Exports/' + item.id + '/Download')}">${item.fileName}</a> ${item.itemCount} items <button is="emby-button" type="button" data-delete-export="${item.id}">Delete</button></p>`).join('');
-        });
+                : exports.map(item => `<p><a href="${getDownloadUrl('InventoryExporter/Exports/' + item.id + '/Download')}">${escapeHtml(item.fileName)}</a> ${escapeHtml(item.itemCount)} items <button is="emby-button" type="button" data-delete-export="${escapeHtml(item.id)}">Delete</button></p>`).join('');
+        }, error => reportError('Could not load the recent exports', error));
+    }
+
+    function refreshOutputDirectories() {
+        return getJson('InventoryExporter/OutputDirectories').then(renderOutputDirectories, error => reportError('Could not load the output directory suggestions', error));
     }
 
     function refreshHistory() {
-        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/OutputDirectories') }).then(renderOutputDirectories);
-        ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl('InventoryExporter/Libraries') }).then(libraries => {
+        refreshOutputDirectories();
+        getJson('InventoryExporter/Libraries').then(libraries => {
             renderLibraries(libraries);
             updateLibraryPickerState();
-        });
+        }, error => reportError('Could not load the libraries', error));
         refreshStatus();
         refreshExports();
     }
@@ -273,7 +371,11 @@
             return;
         }
 
-        loadConfig().then(refreshHistory);
+        clearError();
+        loadConfig().then(refreshHistory, error => {
+            reportError('Could not load the settings', error);
+            refreshHistory();
+        });
     });
 
     document.addEventListener('submit', event => {
@@ -282,6 +384,7 @@
         }
 
         event.preventDefault();
+        clearError();
         Dashboard.showLoadingMsg();
         ApiClient.getPluginConfiguration(pluginId).then(config => {
             config.OutputDirectory = page().querySelector('#txtOutputDirectory').value;
@@ -296,18 +399,25 @@
         }).then(() => {
             Dashboard.hideLoadingMsg();
             Dashboard.processPluginConfigurationUpdateResult();
+            refreshOutputDirectories();
+        }, error => {
+            Dashboard.hideLoadingMsg();
+            reportError('Could not save the settings', error);
         });
     });
 
     document.addEventListener('click', event => {
         if (event.target.closest('#btnRunExport')) {
+            clearError();
+            // No formats in the request: the server applies the saved CSV and JSON defaults.
             ApiClient.ajax({
                 type: 'POST',
                 url: ApiClient.getUrl('InventoryExporter/Export'),
-                data: JSON.stringify({ formats: ['csv', 'json'], libraryIds: selectedLibraryIds() }),
-                contentType: 'application/json'
+                data: JSON.stringify({ libraryIds: selectedLibraryIds() }),
+                contentType: 'application/json',
+                dataType: 'json'
             }).then(response => {
-                const startStatus = normalizeStatus(response || {});
+                const startStatus = normalizeStatus(camelCaseKeys(response || {}));
                 activeExportId = startStatus.exportId;
                 lastNotifiedExportId = '';
                 page().querySelector('#exportStatus').innerText = 'Starting export 0%';
@@ -315,11 +425,19 @@
                 setExportButtonRunning(true);
                 showToast('Library inventory export started.');
                 scheduleInitialStatusRefresh();
-            });
+            }, error => reportError('Could not start the export', error));
         }
 
         if (event.target.closest('#btnDownloadLatest')) {
-            window.location.href = getDownloadUrl('InventoryExporter/Exports/Latest');
+            clearError();
+            getJson('InventoryExporter/Exports').then(exports => {
+                if (exports.length === 0) {
+                    showError('There is no export to download yet. Run an export first.');
+                    return;
+                }
+
+                window.location.href = getDownloadUrl('InventoryExporter/Exports/Latest');
+            }, error => reportError('Could not download the latest export', error));
         }
 
         const outputDirectoryButton = event.target.closest('[data-output-directory]');
@@ -329,7 +447,9 @@
 
         const deleteButton = event.target.closest('[data-delete-export]');
         if (deleteButton) {
-            ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('InventoryExporter/Exports/' + deleteButton.getAttribute('data-delete-export')) }).then(refreshHistory);
+            clearError();
+            ApiClient.ajax({ type: 'DELETE', url: ApiClient.getUrl('InventoryExporter/Exports/' + deleteButton.getAttribute('data-delete-export')) })
+                .then(refreshHistory, error => reportError('Could not delete the export', error));
         }
     });
 

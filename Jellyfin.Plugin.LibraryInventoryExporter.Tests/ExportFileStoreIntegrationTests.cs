@@ -74,6 +74,33 @@ public sealed class ExportFileStoreIntegrationTests
         Assert.True(File.Exists(unrelated));
     }
 
+    [Fact]
+    public void DeleteExport_RemovesTheUnzippedCopyLeftByOlderVersions()
+    {
+        var root = NewTempDirectory();
+        var store = CreateStore(root);
+        var exportId = "2026-05-16T000000Z";
+        var stagingDirectory = store.GetExportDirectory(exportId);
+        Directory.CreateDirectory(stagingDirectory);
+        File.WriteAllText(Path.Combine(stagingDirectory, "user_data.csv"), "item_id");
+
+        Assert.True(store.DeleteExport(exportId));
+        Assert.False(Directory.Exists(stagingDirectory));
+    }
+
+    [Fact]
+    public void CanWriteOutputDirectory_IsFalseWhenJellyfinCannotCreateTheDirectory()
+    {
+        var root = NewTempDirectory();
+        Directory.CreateDirectory(root);
+        var notADirectory = Path.Combine(root, "not-a-directory");
+        File.WriteAllText(notADirectory, "x");
+
+        Assert.False(CreateStore(Path.Combine(notADirectory, "data")).CanWriteOutputDirectory(out var outputDirectory));
+        Assert.Equal(Path.Combine(notADirectory, "data", ExportFileStore.DefaultDirectoryName), outputDirectory);
+        Assert.True(CreateStore(root).CanWriteOutputDirectory(out _));
+    }
+
     private static ExportFileStore CreateStore(string dataPath)
     {
         var paths = new Mock<IServerApplicationPaths>();

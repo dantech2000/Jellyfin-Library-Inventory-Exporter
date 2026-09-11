@@ -1,6 +1,7 @@
 using System.Collections;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.LibraryInventoryExporter.Models;
+using MediaBrowser.Controller;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using Microsoft.Extensions.Logging;
@@ -24,13 +25,17 @@ public sealed class LibraryScanner
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
+    private readonly IMediaSourceManager _mediaSourceManager;
+    private readonly IServerApplicationHost _applicationHost;
     private readonly ILogger<LibraryScanner> _logger;
 
-    public LibraryScanner(ILibraryManager libraryManager, IUserManager userManager, IUserDataManager userDataManager, ILogger<LibraryScanner> logger)
+    public LibraryScanner(ILibraryManager libraryManager, IUserManager userManager, IUserDataManager userDataManager, IMediaSourceManager mediaSourceManager, IServerApplicationHost applicationHost, ILogger<LibraryScanner> logger)
     {
         _libraryManager = libraryManager;
         _userManager = userManager;
         _userDataManager = userDataManager;
+        _mediaSourceManager = mediaSourceManager;
+        _applicationHost = applicationHost;
         _logger = logger;
     }
 
@@ -39,6 +44,7 @@ public sealed class LibraryScanner
         var manifest = new InventoryManifest
         {
             GeneratedAt = DateTimeOffset.UtcNow,
+            Server = new InventoryServer { Version = _applicationHost.ApplicationVersionString },
             ExportOptions = new InventoryExportOptions
             {
                 IncludeUserData = options.IncludeUserData,
@@ -355,13 +361,13 @@ public sealed class LibraryScanner
         return inventoryItem;
     }
 
-    private static void MapMediaSources(object item, InventoryItem inventoryItem, ExportOptions options)
+    private void MapMediaSources(object item, InventoryItem inventoryItem, ExportOptions options)
     {
-        var mediaSources = GetValue(item, "MediaSources") as IEnumerable;
-        if (mediaSources is null && Invoke(item, "GetMediaSources") is IEnumerable methodSources)
-        {
-            mediaSources = methodSources;
-        }
+        // Videos and songs get their probed media sources, streams included, from the media source manager.
+        // Series, seasons, albums, and collections fall back to one source built from the item itself.
+        IEnumerable? mediaSources = item is IHasMediaSources && item is BaseItem baseItem
+            ? _mediaSourceManager.GetStaticMediaSources(baseItem, false)
+            : GetValue(item, "MediaSources") as IEnumerable;
 
         if (mediaSources is null)
         {
@@ -383,6 +389,10 @@ public sealed class LibraryScanner
 
         foreach (var mediaSource in mediaSources.Cast<object>())
         {
+            var streams = (GetValue(mediaSource, "MediaStreams") as IEnumerable)?.Cast<object>().ToList() ?? new List<object>();
+
+            // A media source has no picture size or HDR range of its own. The first video stream has them.
+            var videoStream = streams.FirstOrDefault(stream => Convert.ToString(GetValue(stream, "Type")) == "Video");
             var source = new InventoryMediaSource
             {
                 ItemId = inventoryItem.Id,
@@ -392,17 +402,17 @@ public sealed class LibraryScanner
                 SizeBytes = GetLong(mediaSource, "Size"),
                 Bitrate = GetInt(mediaSource, "Bitrate"),
                 VideoType = Convert.ToString(GetValue(mediaSource, "VideoType")),
-                Width = GetInt(mediaSource, "Width"),
-                Height = GetInt(mediaSource, "Height"),
-                VideoRange = Convert.ToString(GetValue(mediaSource, "VideoRange")),
-                VideoRangeType = Convert.ToString(GetValue(mediaSource, "VideoRangeType")),
+                Width = GetInt(mediaSource, "Width") ?? (videoStream is null ? null : GetInt(videoStream, "Width")),
+                Height = GetInt(mediaSource, "Height") ?? (videoStream is null ? null : GetInt(videoStream, "Height")),
+                VideoRange = Convert.ToString(GetValue(mediaSource, "VideoRange") ?? (videoStream is null ? null : GetValue(videoStream, "VideoRange"))),
+                VideoRangeType = Convert.ToString(GetValue(mediaSource, "VideoRangeType") ?? (videoStream is null ? null : GetValue(videoStream, "VideoRangeType"))),
                 IsRemote = GetBool(mediaSource, "IsRemote"),
                 RunTimeTicks = GetLong(mediaSource, "RunTimeTicks")
             };
 
-            if (options.IncludeMediaStreams && GetValue(mediaSource, "MediaStreams") is IEnumerable streams)
+            if (options.IncludeMediaStreams)
             {
-                foreach (var stream in streams.Cast<object>())
+                foreach (var stream in streams)
                 {
                     source.Streams.Add(MapStream(inventoryItem.Id, source.Id, stream));
                 }
@@ -414,11 +424,14 @@ public sealed class LibraryScanner
 
     private void MapUserData(object item, InventoryItem inventoryItem, ExportOptions options)
     {
-        var users = InvokeEnumerable(_userManager, "GetUsers").ToList();
-        foreach (var user in users)
+        if (item is not BaseItem baseItem)
         {
-            var userId = GetGuid(user, "Id");
-            var userData = Invoke(_userDataManager, "GetUserData", userId, inventoryItem.Id);
+            return;
+        }
+
+        foreach (var user in _userManager.GetUsers())
+        {
+            var userData = _userDataManager.GetUserData(user, baseItem);
             if (userData is null)
             {
                 continue;
@@ -427,13 +440,13 @@ public sealed class LibraryScanner
             inventoryItem.UserData.Add(new InventoryUserData
             {
                 ItemId = inventoryItem.Id,
-                UserId = options.AnonymizeUsers ? Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(userId.ToByteArray())) : userId.ToString("N"),
-                UserName = options.AnonymizeUsers ? string.Empty : GetString(user, "Username") ?? GetString(user, "Name") ?? string.Empty,
-                Played = GetBool(userData, "Played"),
-                IsFavorite = GetBool(userData, "IsFavorite"),
-                PlayCount = GetInt(userData, "PlayCount") ?? 0,
-                LastPlayedDate = GetDate(userData, "LastPlayedDate"),
-                PlaybackPositionTicks = GetLong(userData, "PlaybackPositionTicks") ?? 0
+                UserId = options.AnonymizeUsers ? Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(user.Id.ToByteArray())) : user.Id.ToString("N"),
+                UserName = options.AnonymizeUsers ? string.Empty : user.Username,
+                Played = userData.Played,
+                IsFavorite = userData.IsFavorite,
+                PlayCount = userData.PlayCount,
+                LastPlayedDate = userData.LastPlayedDate is { } lastPlayed ? new DateTimeOffset(DateTime.SpecifyKind(lastPlayed, DateTimeKind.Utc)) : null,
+                PlaybackPositionTicks = userData.PlaybackPositionTicks
             });
         }
     }
@@ -468,16 +481,6 @@ public sealed class LibraryScanner
     {
         var name = item.GetType().Name;
         return name is "Movie" or "Series" or "Season" or "Episode" or "MusicAlbum" or "Audio" or "Video" or "BoxSet";
-    }
-
-    private static object? Invoke(object target, string methodName, params object?[] arguments)
-    {
-        return target.GetType().GetMethods().FirstOrDefault(m => m.Name == methodName && m.GetParameters().Length == arguments.Length)?.Invoke(target, arguments);
-    }
-
-    private static IEnumerable<object> InvokeEnumerable(object target, string methodName)
-    {
-        return Invoke(target, methodName) is IEnumerable values ? values.Cast<object>() : Array.Empty<object>();
     }
 
     private static object? GetValue(object target, string name)

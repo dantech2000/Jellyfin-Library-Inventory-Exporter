@@ -1,0 +1,10 @@
+# Runs the Jellyfin containers on another platform, for example linux/amd64 through Rosetta.
+# e2e/run.sh adds this file when JELLYFIN_PLATFORM is set.
+
+services:
+  media:
+    platform: ${JELLYFIN_PLATFORM}
+  jellyfin:
+    platform: ${JELLYFIN_PLATFORM}
+  jellyfin-clean:
+    platform: ${JELLYFIN_PLATFORM}

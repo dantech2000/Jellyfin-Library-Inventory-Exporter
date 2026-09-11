@@ -6,6 +6,9 @@ namespace Jellyfin.Plugin.LibraryInventoryExporter.Services;
 
 public sealed class InventoryExportService
 {
+    // A finishing export reports "Completed" a moment before it releases the gate.
+    private static readonly TimeSpan FinishingExportGracePeriod = TimeSpan.FromSeconds(5);
+
     private readonly LibraryScanner _scanner;
     private readonly CsvExportWriter _csvWriter;
     private readonly JsonExportWriter _jsonWriter;
@@ -27,22 +30,104 @@ public sealed class InventoryExportService
 
     public ExportStatus Status => _status;
 
-    public async Task<ExportHistoryEntry> RunExportAsync(ExportOptions options, CancellationToken cancellationToken)
+    /// <summary>
+    /// Starts an export in the background and returns its id at once, so the plugin page can follow the progress.
+    /// Returns null when another export is running.
+    /// </summary>
+    public string? TryStartExport(ExportOptions options)
     {
-        if (!await _gate.WaitAsync(0, cancellationToken).ConfigureAwait(false))
+        if (!_gate.Wait(GateWait()))
         {
-            throw new InvalidOperationException("An export is already running.");
+            return null;
         }
 
         var generatedAt = DateTimeOffset.UtcNow;
         var exportId = _fileStore.CreateExportId(generatedAt);
-        var exportDirectory = _fileStore.GetExportDirectory(exportId);
-        Directory.CreateDirectory(exportDirectory);
-        _logger.LogInformation("Starting library inventory export {ExportId} in {ExportDirectory}", exportId, exportDirectory);
+        SetStatus(true, exportId, "Preparing export", 0, 0, 0, null);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ExportAsync(options, generatedAt, exportId, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // ExportAsync logs the failure and records it in Status for the plugin page.
+            }
+            finally
+            {
+                _gate.Release();
+            }
+        });
+
+        return exportId;
+    }
+
+    public async Task<ExportHistoryEntry> RunExportAsync(ExportOptions options, CancellationToken cancellationToken)
+    {
+        if (!await _gate.WaitAsync(GateWait(), cancellationToken).ConfigureAwait(false))
+        {
+            throw new InvalidOperationException("An export is already running.");
+        }
 
         try
         {
+            var generatedAt = DateTimeOffset.UtcNow;
+            var exportId = _fileStore.CreateExportId(generatedAt);
             SetStatus(true, exportId, "Preparing export", 0, 0, 0, null);
+            return await ExportAsync(options, generatedAt, exportId, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public ExportOptions BuildOptionsFromConfiguration()
+    {
+        var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+        var formats = new List<ExportFormat>();
+        if (config.ExportCsvByDefault)
+        {
+            formats.Add(ExportFormat.Csv);
+        }
+
+        if (config.ExportJsonByDefault)
+        {
+            formats.Add(ExportFormat.Json);
+        }
+
+        if (formats.Count == 0)
+        {
+            formats.Add(ExportFormat.Json);
+        }
+
+        return new ExportOptions
+        {
+            Formats = formats,
+            IncludeUserData = config.IncludeUserData,
+            IncludeMediaStreams = config.IncludeMediaStreams,
+            IncludeProviderIds = config.IncludeProviderIds,
+            CompressOutput = config.CompressOutput,
+            AnonymizeUsers = config.AnonymizeUsers
+        };
+    }
+
+    private async Task<ExportHistoryEntry> ExportAsync(ExportOptions options, DateTimeOffset generatedAt, string exportId, CancellationToken cancellationToken)
+    {
+        string? outputDirectory = null;
+        string? exportDirectory = null;
+
+        try
+        {
+            outputDirectory = _fileStore.ResolveOutputDirectory();
+            exportDirectory = _fileStore.GetExportDirectory(exportId);
+            _logger.LogInformation("Starting library inventory export {ExportId} in {ExportDirectory}", exportId, exportDirectory);
+
+            // An export started in the same second reuses the export id, so start from an empty directory.
+            DeleteStagingDirectory(exportDirectory);
+            Directory.CreateDirectory(exportDirectory);
+
             var manifest = await _scanner.ScanAsync(options, (stage, done, total) => SetStatus(true, exportId, stage, Percent(done, total), done, total, null), cancellationToken).ConfigureAwait(false);
 
             if (options.Formats.Contains(ExportFormat.Csv))
@@ -89,43 +174,47 @@ public sealed class InventoryExportService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Library inventory export {ExportId} failed", exportId);
-            SetStatus(false, exportId, "Failed", _status.ProgressPercent, _status.ProcessedItems, _status.TotalItems, ex.Message);
+            SetStatus(false, exportId, "Failed", _status.ProgressPercent, _status.ProcessedItems, _status.TotalItems, DescribeFailure(ex, outputDirectory));
             throw;
         }
         finally
         {
-            _gate.Release();
+            // The archive holds the export. The unzipped copy can contain user data, so it must not stay behind.
+            DeleteStagingDirectory(exportDirectory);
         }
     }
 
-    public ExportOptions BuildOptionsFromConfiguration()
+    // The plugin page shows this message, so it says what failed and what to do about it.
+    private static string DescribeFailure(Exception exception, string? outputDirectory)
     {
-        var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
-        var formats = new List<ExportFormat>();
-        if (config.ExportCsvByDefault)
+        if (exception is OperationCanceledException)
         {
-            formats.Add(ExportFormat.Csv);
+            return "The export was cancelled.";
         }
 
-        if (config.ExportJsonByDefault)
+        if (exception is UnauthorizedAccessException or IOException)
         {
-            formats.Add(ExportFormat.Json);
+            return $"Jellyfin could not write the export to {outputDirectory ?? "the output directory"} ({exception.Message}). Choose an output directory that the Jellyfin server can write to, then save the settings.";
         }
 
-        if (formats.Count == 0)
+        return exception.Message;
+    }
+
+    private void DeleteStagingDirectory(string? directory)
+    {
+        if (directory is null || !Directory.Exists(directory))
         {
-            formats.Add(ExportFormat.Json);
+            return;
         }
 
-        return new ExportOptions
+        try
         {
-            Formats = formats,
-            IncludeUserData = config.IncludeUserData,
-            IncludeMediaStreams = config.IncludeMediaStreams,
-            IncludeProviderIds = config.IncludeProviderIds,
-            CompressOutput = config.CompressOutput,
-            AnonymizeUsers = config.AnonymizeUsers
-        };
+            Directory.Delete(directory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(ex, "Could not remove the export staging directory {ExportDirectory}", directory);
+        }
     }
 
     private void SetStatus(bool running, string exportId, string stage, double percent, int processed, int total, string? error)
@@ -141,6 +230,9 @@ public sealed class InventoryExportService
             ErrorMessage = error
         };
     }
+
+    // Do not wait on an export that is still running, only on one that is about to release the gate.
+    private TimeSpan GateWait() => _status.IsRunning ? TimeSpan.Zero : FinishingExportGracePeriod;
 
     private static double Percent(int done, int total) => total <= 0 ? 0 : Math.Min(69, Math.Round(done * 69d / total, 2));
 }

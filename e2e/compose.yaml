@@ -1,0 +1,80 @@
+# Docker test environment for the Library Inventory Exporter plugin.
+# One Jellyfin server line per compose project. e2e/run.sh selects the line with --env-file.
+
+x-jellyfin-healthcheck: &jellyfin-healthcheck
+  test: ["CMD", "curl", "-fsS", "http://localhost:8096/health"]
+  interval: 5s
+  timeout: 5s
+  retries: 60
+  start_period: 15s
+
+services:
+  # One-shot job: writes the fixture library with the ffmpeg that ships in the Jellyfin image.
+  media:
+    image: ${JELLYFIN_IMAGE:?use e2e/run.sh or --env-file e2e/env/<line>.env}
+    entrypoint: ["/bin/bash", "/fixtures/generate-media.sh", "/media"]
+    volumes:
+      - ./docker/generate-media.sh:/fixtures/generate-media.sh:ro
+      - media:/media
+
+  # Jellyfin with the plugin build for this line side-loaded.
+  jellyfin:
+    build:
+      context: ..
+      dockerfile: e2e/Dockerfile
+      target: jellyfin
+      args:
+        JELLYFIN_IMAGE: ${JELLYFIN_IMAGE}
+        PLUGIN_TFM: ${PLUGIN_TFM:?use e2e/run.sh or --env-file e2e/env/<line>.env}
+    ports:
+      - "${JELLYFIN_HOST_PORT:-8096}:8096"
+    volumes:
+      - media:/media:ro
+      - exports:/exports
+    healthcheck: *jellyfin-healthcheck
+    depends_on:
+      media:
+        condition: service_completed_successfully
+
+  # Stock Jellyfin without the plugin. The catalog-install spec installs it from `catalog`.
+  jellyfin-clean:
+    image: ${JELLYFIN_IMAGE}
+    ports:
+      - "${JELLYFIN_CLEAN_HOST_PORT:-8097}:8096"
+    healthcheck: *jellyfin-healthcheck
+
+  # Local plugin repository: manifest.json plus the zips for both Jellyfin lines.
+  catalog:
+    build:
+      context: ..
+      dockerfile: e2e/Dockerfile
+      target: catalog
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.63.0-noble
+    working_dir: /repo/e2e
+    ipc: host
+    environment:
+      CI: ${CI:-}
+      JELLYFIN_LINE: ${JELLYFIN_LINE}
+      JELLYFIN_URL: http://jellyfin:8096
+      JELLYFIN_CLEAN_URL: http://jellyfin-clean:8096
+      CATALOG_URL: http://catalog
+      EXPORTS_DIR: /exports
+    volumes:
+      - ..:/repo
+      - playwright-node-modules:/repo/e2e/node_modules
+      - exports:/exports:ro
+    command: ["bash", "-c", "npm ci --no-audit --no-fund && npx playwright test"]
+    depends_on:
+      jellyfin:
+        condition: service_healthy
+      jellyfin-clean:
+        condition: service_healthy
+      catalog:
+        condition: service_started
+
+volumes:
+  media:
+  exports:
+  playwright-node-modules:
