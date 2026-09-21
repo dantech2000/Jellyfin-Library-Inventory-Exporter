@@ -76,7 +76,8 @@ test.describe('error handling', () => {
     await expect(toast(page, 'Library inventory export failed: Disk full')).toBeVisible();
     await expect(root.locator('#inventoryExporterError')).toHaveText('Library inventory export failed: Disk full');
     await expect(root.locator('#exportProgressDetails')).toHaveText('Disk full');
-    await expect(root.locator('#exportStatus')).toHaveText('Failed 12%: Disk full');
+    await expect(root.locator('#exportProgressStage')).toHaveText('Failed');
+    await expect(root.locator('#exportProgressPercent')).toHaveText('12%');
     await expect(root.locator('#btnRunExport')).toBeEnabled();
 
     // An administrator who opens the page later still sees why the last export failed.

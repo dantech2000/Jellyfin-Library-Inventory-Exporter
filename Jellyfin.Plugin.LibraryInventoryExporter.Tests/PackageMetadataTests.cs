@@ -79,6 +79,10 @@ public sealed class PackageMetadataTests
         var ci = File.ReadAllText(Path.Combine(root, ".github", "workflows", "ci.yml"));
         var release = File.ReadAllText(Path.Combine(root, ".github", "workflows", "release.yml"));
         var publish = File.ReadAllText(Path.Combine(root, ".github", "workflows", "publish-manifest.yml"));
+        var performance = File.ReadAllText(Path.Combine(root, ".github", "workflows", "performance.yml"));
+
+        Assert.Contains("workflow_dispatch:", performance);
+        Assert.Contains("./e2e/perf.sh ${{ matrix.jellyfin }} ${{ inputs.profile }}", performance);
 
         Assert.Contains("actions/checkout@v5", ci);
         Assert.Contains("actions/setup-dotnet@v5", ci);
@@ -160,7 +164,10 @@ public sealed class PackageMetadataTests
         Assert.Contains("scheduleStatusRefresh", script);
         Assert.Contains("scheduleInitialStatusRefresh", script);
         Assert.Contains("setTimeout(refreshStatus, 250)", script);
-        Assert.Contains("setTimeout(refreshStatus, 2000)", script);
+        Assert.Contains("setTimeout(refreshStatus, 1000)", script);
+        Assert.Contains("id=\"exportProgressTiming\"", html);
+        Assert.Contains("id=\"exportScheduleText\"", html);
+        Assert.Contains("refreshSchedule()", script);
         Assert.Contains("Export Running", script);
         Assert.Contains("normalizeStatus", script);
         Assert.Contains("ProgressPercent", script);
@@ -195,6 +202,15 @@ public sealed class PackageMetadataTests
         Assert.Contains("Install the latest compatible version", readme);
         Assert.Contains("Restart Jellyfin", readme);
         Assert.Contains("raw GitHub URL above is the most direct Jellyfin repository URL", readme);
+    }
+
+    [Fact]
+    public void Repository_IsLicensedUnderGplVersion3()
+    {
+        var license = File.ReadAllText(Path.Combine(TestPaths.RepositoryRoot(), "LICENSE"));
+
+        Assert.Contains("GNU GENERAL PUBLIC LICENSE", license);
+        Assert.Contains("Version 3, 29 June 2007", license);
     }
 
     [Fact]

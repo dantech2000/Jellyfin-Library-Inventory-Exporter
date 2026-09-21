@@ -32,7 +32,7 @@ public sealed class ExportStartResponse
     public string Status { get; init; } = "running";
 }
 
-public sealed class ExportStatus
+public sealed record ExportStatus
 {
     public bool IsRunning { get; set; }
     public string? ExportId { get; set; }
@@ -40,6 +40,10 @@ public sealed class ExportStatus
     public double ProgressPercent { get; set; }
     public int ProcessedItems { get; set; }
     public int TotalItems { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+
+    // Measured on the server, so the plugin page's estimate does not depend on the browser clock.
+    public double ElapsedSeconds { get; set; }
     public string? ErrorMessage { get; set; }
 }
 

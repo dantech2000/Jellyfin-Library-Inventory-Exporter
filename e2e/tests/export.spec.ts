@@ -17,7 +17,6 @@ test.describe('export', () => {
     await expect(root.locator('#exportProgressStage')).toHaveText('Completed');
     await expect(root.locator('#exportProgressPercent')).toHaveText('100%');
     await expect(root.locator('.exportProgressBar')).toHaveAttribute('aria-valuenow', '100');
-    await expect(root.locator('#exportStatus')).toHaveText('Completed 100%');
     await expect(root.locator('#btnRunExport')).toBeEnabled();
     await expect(root.locator('#btnRunExport')).toHaveText('Run Export Now');
 
@@ -47,17 +46,33 @@ test.describe('export', () => {
       }
 
       await route.fulfill({
-        json: { IsRunning: true, ExportId: 'x', Stage: 'Scanning library Movies', ProgressPercent: 42.4, ProcessedItems: 2, TotalItems: 5, ErrorMessage: null },
+        json: {
+          IsRunning: true,
+          ExportId: 'x',
+          Stage: 'Scanning Movies (library 1 of 3)',
+          ProgressPercent: 42.4,
+          ProcessedItems: 2000,
+          TotalItems: 5000,
+          ElapsedSeconds: 190,
+          ErrorMessage: null,
+        },
       });
     });
 
     await root.locator('#btnRunExport').click();
     await expect(root.locator('#btnRunExport')).toBeDisabled();
     await expect(root.locator('#btnRunExport')).toHaveText('Export Running');
-    await expect(root.locator('#exportProgressStage')).toHaveText('Scanning library Movies');
+    await expect(root.locator('#exportProgressStage')).toHaveText('Scanning Movies (library 1 of 3)');
     await expect(root.locator('#exportProgressPercent')).toHaveText('42%');
-    await expect(root.locator('#exportProgressDetails')).toHaveText('2 of 5 items processed');
+    await expect(root.locator('#exportProgressDetails')).toHaveText('2,000 of 5,000 items processed');
+    await expect(root.locator('#exportProgressTiming')).toHaveText('Elapsed 3:10 · about 5 min left');
     await expect(root.locator('.exportProgressBar')).toHaveAttribute('aria-valuenow', '42');
+    await expect(root.locator('#exportProgressFill')).toHaveAttribute('style', /width: 42%/);
+
+    // A visible bar proves the page's styles apply inside the Jellyfin dashboard.
+    const bar = await root.locator('.exportProgressBar').boundingBox();
+    expect(bar?.height ?? 0, 'progress bar height').toBeGreaterThan(4);
+    expect(bar?.width ?? 0, 'progress bar width').toBeGreaterThan(100);
 
     await expect(root.locator('#exportProgressStage')).toHaveText('Completed', { timeout: 30_000 });
     await expect(root.locator('#btnRunExport')).toBeEnabled();

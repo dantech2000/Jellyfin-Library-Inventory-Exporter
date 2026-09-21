@@ -42,7 +42,7 @@ COPY --chmod=755 e2e/docker/entrypoint.sh /usr/local/bin/e2e-entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/e2e-entrypoint.sh"]
 
 # Unit tests on both target frameworks, for machines without the .NET 9 runtime:
-#   docker build --file e2e/Dockerfile --target unit-tests --progress plain .
+#   docker build --file e2e/Dockerfile --target unit-tests --output type=cacheonly --progress plain .
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS dotnet9-runtime
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS unit-tests

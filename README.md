@@ -22,8 +22,8 @@ Each release ships one build per Jellyfin server line:
 
 | Jellyfin server | Plugin build | targetAbi | .NET |
 | --- | --- | --- | --- |
-| 10.11.x | `0.1.8.10` | `10.11.0.0` | `net9.0` |
-| 12.0.x | `0.1.8.12` | `12.0.0.0` | `net10.0` |
+| 10.11.x | `0.1.9.10` | `10.11.0.0` | `net9.0` |
+| 12.0.x | `0.1.9.12` | `12.0.0.0` | `net10.0` |
 
 The last part of the plugin version names the server line. Jellyfin's catalog installs the highest version whose targetAbi the server supports, so each server gets the build made for it.
 
@@ -65,7 +65,23 @@ If you installed the plugin before version `0.1.0` metadata was updated, remove 
 6. Click `Run Export Now`. The progress bar follows the export, and a message tells you when it completes or why it failed.
 7. Use `Download Latest Export` or the recent export links to download the ZIP archive.
 
-To export on a schedule, open `Dashboard` -> `Scheduled Tasks`, select `Export library inventory`, and add a trigger. The task has no trigger by default.
+## Scheduled Exports
+
+Exports run only when you click `Run Export Now`, until you add a schedule. The plugin page shows the current schedule.
+
+To export on a schedule:
+
+1. On the plugin page, click `Change schedule`. You can also open `Dashboard` -> `Scheduled Tasks` -> `Export library inventory`.
+2. Add a trigger: daily at a time, weekly on a day and time, every few hours, or when Jellyfin starts.
+
+Scheduled exports use the saved settings of the plugin page, including the formats, user watch state, and output directory.
+
+Jellyfin triggers do not accept cron expressions. For a cron schedule, create an API key in `Dashboard` -> `API Keys`, and let cron call the REST API:
+
+```bash
+# Every Monday at 04:00
+0 4 * * 1 curl -fsS -X POST -H 'Authorization: MediaBrowser Token="<api key>"' http://<jellyfin>:8096/InventoryExporter/Export
+```
 
 Exports are read-only with respect to Jellyfin media, metadata, and user data. The plugin only writes export archives and history files under the configured output directory.
 
@@ -83,6 +99,27 @@ Each export is a ZIP archive named `jellyfin-inventory-<timestamp>.zip`:
 | `manifest.json` | The same inventory as one versioned JSON document. |
 
 The CSV files come with the CSV format and `manifest.json` with the JSON format.
+
+## Export Speed
+
+These times come from the performance suite on Jellyfin 12.0, in a container with four CPU cores. Your server will differ, but the export time stays close to linear in the number of items.
+
+| Library | Export | With watch state | Archive | Archive with watch state |
+| ---: | ---: | ---: | ---: | ---: |
+| 2,750 items | 0.8 s | 0.8 s | 0.5 MB | 0.8 MB |
+| 14,300 items | 3.2 s | 3.1 s | 3.0 MB | 4.8 MB |
+| 49,500 items | 9.5 s | 9.2 s | 10.3 MB | 16.5 MB |
+
+As a rule of thumb, expect 3,000 to 5,000 items per second on four cores. A small library sits at the low end, because writing and compressing the archive costs a fixed fraction of a second. Watch state adds almost nothing, because the export reads it for all users in one step per 500 items. The runs above covered 7 users for the small library and 12 users for the other two.
+
+Jellyfin 10.11 exports at a similar rate. Its 14,300-item run took 5.1 seconds, in an emulated container that is slower than the native container of the table above.
+
+An export is not a library scan. It reads what Jellyfin has already indexed and never probes a media file. Jellyfin needed 22 minutes to index the 49,500-item library that the plugin exports in 9.5 seconds.
+
+Two other things to expect at any size:
+
+- The export uses at most half of the CPU cores, and never more than four threads, so playback keeps its share. While the 49,500-item export ran, Jellyfin answered other requests in 10 ms at the 95th percentile.
+- The Jellyfin process needs more memory while an export runs: about 60 MB for 2,750 items and about 220 MB for 49,500 items.
 
 ## REST API
 
@@ -122,10 +159,10 @@ dotnet build --configuration Release
 dotnet test --configuration Release
 ```
 
-`dotnet test` runs the unit tests on both target frameworks, so it needs the .NET 9 and .NET 10 runtimes. If you do not have the .NET 9 runtime, run the unit tests in Docker:
+`dotnet test` runs the unit tests on both target frameworks, so it needs the .NET 9 and .NET 10 runtimes. If you do not have the .NET 9 runtime, run the unit tests in Docker. `--output type=cacheonly` runs them without keeping an image:
 
 ```bash
-docker build --file e2e/Dockerfile --target unit-tests --progress plain .
+docker build --file e2e/Dockerfile --target unit-tests --output type=cacheonly --progress plain .
 ```
 
 ## End-to-End Tests
@@ -170,6 +207,42 @@ JELLYFIN_LINE=12 npx playwright test --ui
 
 On the host, the specs skip the checks that read the Docker exports volume.
 
+## Performance Tests
+
+`e2e/perf.sh` builds a simulated library, waits for Jellyfin to index it, and then measures exports against it. Each media file is a hard link to one of three small template files, so tens of thousands of items take a few megabytes of disk. Jellyfin still probes every file, so the exports see real media sources and streams. The numbers in [Export Speed](#export-speed) come from this suite.
+
+```bash
+./e2e/perf.sh 12 small      # about 2,750 items
+./e2e/perf.sh 12 medium     # about 14,300 items
+./e2e/perf.sh 10.11 large   # about 49,500 items
+```
+
+| Profile | Movies | Series | Episodes | Albums | Songs | Extra users | Jellyfin index time |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `small` | 500 | 50 | 1,000 | 100 | 1,000 | 5 | about 1 min |
+| `medium` | 2,000 | 200 | 6,000 | 500 | 5,000 | 10 | about 4 min |
+| `large` | 5,000 | 500 | 20,000 | 2,000 | 20,000 | 10 | about 22 min |
+
+A run measures:
+
+- The export time and items per second, with and without the watch state of every user.
+- The peak memory of the Jellyfin process during each export.
+- How fast Jellyfin answers other requests while an export runs.
+- Whether the progress moves steadily, never goes backwards, and never counts more items than the total.
+
+Indexing the seeded library takes most of the wall-clock time, not the export. To measure a code change without paying for it twice, keep the stack and reuse its database:
+
+```bash
+KEEP=1 ./e2e/perf.sh 12 large            # leaves the stack running afterwards
+REUSE=1 KEEP=1 ./e2e/perf.sh 12 large    # rebuilds the plugin, keeps the index
+```
+
+`REUSE=1` rebuilds the plugin and restarts Jellyfin with it, but skips the scan. A second large run then takes about a minute instead of 25.
+
+Measure on an idle machine. A Docker build or another container on the same host can double an export time and make two runs impossible to compare.
+
+The results are in `e2e/perf-results/<line>/<profile>.md` and `<profile>.json`. The `Performance` workflow in GitHub Actions runs the same suite on demand. Choose a profile and a Jellyfin line when you start it.
+
 ## Install From Source
 
 Publish the build for your Jellyfin server line:
@@ -189,14 +262,18 @@ Copy the contents of `dist/plugin` into a Jellyfin plugin directory, for example
 Maintainers publish installable releases with a tag. The tag must match `<PluginVersion>` in `Directory.Build.props`:
 
 ```bash
-git tag v0.1.8
-git push origin v0.1.8
+git tag v0.1.9
+git push origin v0.1.9
 ```
 
-The release workflow builds the plugin for both server lines. It attaches `Jellyfin.Plugin.LibraryInventoryExporter_0.1.8.10.zip` (Jellyfin 10.11) and `Jellyfin.Plugin.LibraryInventoryExporter_0.1.8.12.zip` (Jellyfin 12.0) to the GitHub release, each with an `.md5` checksum, plus `build.yaml`. The release notes come from the `changelog` in `build.yaml`.
+The release workflow builds the plugin for both server lines. It attaches `Jellyfin.Plugin.LibraryInventoryExporter_0.1.9.10.zip` (Jellyfin 10.11) and `Jellyfin.Plugin.LibraryInventoryExporter_0.1.9.12.zip` (Jellyfin 12.0) to the GitHub release, each with an `.md5` checksum, plus `build.yaml`. The release notes come from the `changelog` in `build.yaml`.
 
 When the release is published, the manifest workflow writes `manifest.json` to the `gh-pages` branch. It adds one catalog version per zip and reads the version and targetAbi from the `meta.json` inside each zip. The raw GitHub URL above is the most direct Jellyfin repository URL. If GitHub Pages is enabled for the repository without a conflicting custom domain, the Pages URL can also be used.
 
 ## Contributing
 
 Bug reports and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to report a problem, set up a development environment, run the tests, support a new Jellyfin line, and publish a release.
+
+## License
+
+The Library Inventory Exporter is free software under the [GNU General Public License v3.0](LICENSE), the license of the Jellyfin plugin template. You can use, study, change, and share it. Anything you distribute that is built from it must stay under the same license.

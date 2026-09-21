@@ -48,7 +48,8 @@ export async function runExportFromPage(page: Page, root: Locator): Promise<stri
 
   // The status line can still show the previous export, so wait for this export's history entry.
   await expect(root.locator('#exportHistory')).toContainText(`jellyfin-inventory-${exportId}.zip`, { timeout: 60_000 });
-  await expect(root.locator('#exportStatus')).toHaveText('Completed 100%');
+  await expect(root.locator('#exportProgressStage')).toHaveText('Completed');
+  await expect(root.locator('#exportProgressPercent')).toHaveText('100%');
   return exportId;
 }
 

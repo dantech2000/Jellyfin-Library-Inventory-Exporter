@@ -48,6 +48,22 @@ public sealed class InventoryExportServiceTests
     }
 
     [Fact]
+    public async Task RunExportAsync_ReportsRisingProgressToTheScheduledTask()
+    {
+        var dataPath = NewTempDirectory();
+        var service = CreateService(() => dataPath);
+        var reported = new List<double>();
+
+        await service.RunExportAsync(new ExportOptions(), CancellationToken.None, new SynchronousProgress(reported.Add));
+
+        Assert.NotEmpty(reported);
+        Assert.Equal(100, reported[^1]);
+        Assert.Equal(reported.OrderBy(value => value), reported);
+        Assert.NotNull(service.Status.StartedAt);
+        Assert.True(service.Status.ElapsedSeconds >= 0);
+    }
+
+    [Fact]
     public async Task TryStartExport_RefusesASecondExportWhileOneRuns()
     {
         using var scanStarted = new ManualResetEventSlim();
@@ -108,4 +124,17 @@ public sealed class InventoryExportServiceTests
     }
 
     private static string NewTempDirectory() => Path.Combine(Path.GetTempPath(), "jlie-tests", Guid.NewGuid().ToString("N"));
+
+    // Progress<T> reports on the thread pool. The test needs every value before RunExportAsync returns.
+    private sealed class SynchronousProgress : IProgress<double>
+    {
+        private readonly Action<double> _report;
+
+        public SynchronousProgress(Action<double> report)
+        {
+            _report = report;
+        }
+
+        public void Report(double value) => _report(value);
+    }
 }
