@@ -1,0 +1,42 @@
+name: Performance
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Library size (small about 2,750 items, medium about 14,300, large about 49,500)
+        type: choice
+        options: [small, medium, large]
+        default: medium
+      jellyfin:
+        description: Jellyfin line
+        type: choice
+        options: [both, "10.11", "12"]
+        default: both
+
+jobs:
+  perf:
+    name: Performance (Jellyfin ${{ matrix.jellyfin }}, ${{ inputs.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        jellyfin: ${{ fromJSON(inputs.jellyfin == 'both' && '["10.11", "12"]' || format('["{0}"]', inputs.jellyfin)) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Run the performance suite
+        run: ./e2e/perf.sh ${{ matrix.jellyfin }} ${{ inputs.profile }}
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: perf-jellyfin-${{ matrix.jellyfin }}-${{ inputs.profile }}
+          path: |
+            e2e/perf-results/${{ matrix.jellyfin }}
+            e2e/playwright-report/perf-${{ matrix.jellyfin }}
+          retention-days: 30

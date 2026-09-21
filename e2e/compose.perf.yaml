@@ -1,0 +1,28 @@
+# Performance suite: seeds a large library and runs e2e/perf instead of the functional specs.
+# e2e/perf.sh adds this file on top of compose.yaml.
+
+services:
+  media:
+    entrypoint: ["/bin/bash", "/fixtures/seed-library.sh", "/media"]
+    environment:
+      PERF_MOVIES: ${PERF_MOVIES:?use e2e/perf.sh}
+      PERF_SHOWS: ${PERF_SHOWS}
+      PERF_SEASONS: ${PERF_SEASONS}
+      PERF_EPISODES: ${PERF_EPISODES}
+      PERF_ALBUMS: ${PERF_ALBUMS}
+      PERF_TRACKS: ${PERF_TRACKS}
+    volumes:
+      - ./docker/seed-library.sh:/fixtures/seed-library.sh:ro
+
+  playwright:
+    environment:
+      PERF_PROFILE: ${PERF_PROFILE}
+      PERF_USERS: ${PERF_USERS}
+      PERF_RESULTS_DIR: /repo/e2e/perf-results
+      JELLYFIN_PLATFORM: ${JELLYFIN_PLATFORM:-native}
+    volumes:
+      - media:/media:ro
+    command: ["bash", "-c", "npm ci --no-audit --no-fund && npx playwright test --config playwright.perf.config.ts"]
+    depends_on: !override
+      jellyfin:
+        condition: service_healthy

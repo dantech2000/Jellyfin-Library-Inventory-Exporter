@@ -2,6 +2,10 @@
 <html>
 <head>
     <title>Library Inventory Exporter</title>
+</head>
+<body>
+    <div id="LibraryInventoryExporterConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+    <!-- The styles live inside the page element: the Jellyfin dashboard drops the <head> of plugin pages. -->
     <style>
         .libraryPicker {
             margin-top: 1em;
@@ -48,7 +52,7 @@
         }
 
         .exportProgressBar {
-            background: rgba(255, 255, 255, .18);
+            background: rgba(128, 128, 128, .3);
             border-radius: 4px;
             height: .75em;
             overflow: hidden;
@@ -80,9 +84,6 @@
             border-left-color: #f5a623;
         }
     </style>
-</head>
-<body>
-    <div id="LibraryInventoryExporterConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
         <div data-role="content">
             <div class="content-primary">
                 <form id="LibraryInventoryExporterConfigForm">
@@ -148,9 +149,12 @@
                             <div id="exportProgressFill" class="exportProgressFill"></div>
                         </div>
                         <div id="exportProgressDetails" class="fieldDescription exportProgressDetails"></div>
+                        <div id="exportProgressTiming" class="fieldDescription"></div>
                     </div>
+                    <h2>Schedule</h2>
+                    <p id="exportScheduleText" class="fieldDescription">Loading the schedule...</p>
+                    <a id="exportScheduleLink" class="button-link" href="#/dashboard/tasks">Change schedule</a>
                     <h2>Recent exports</h2>
-                    <div id="exportStatus"></div>
                     <div id="exportHistory"></div>
                 </div>
             </div>

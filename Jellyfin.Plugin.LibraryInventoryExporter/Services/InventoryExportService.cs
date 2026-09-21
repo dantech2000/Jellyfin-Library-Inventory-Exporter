@@ -17,6 +17,8 @@ public sealed class InventoryExportService
     private readonly ILogger<InventoryExportService> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private ExportStatus _status = new();
+    private DateTimeOffset _startedAt;
+    private IProgress<double>? _taskProgress;
 
     public InventoryExportService(LibraryScanner scanner, CsvExportWriter csvWriter, JsonExportWriter jsonWriter, ExportFileStore fileStore, ExportRetentionService retentionService, ILogger<InventoryExportService> logger)
     {
@@ -28,7 +30,19 @@ public sealed class InventoryExportService
         _logger = logger;
     }
 
-    public ExportStatus Status => _status;
+    /// <summary>
+    /// Gets the progress of the current or last export. While an export runs, the elapsed time is measured at each read.
+    /// </summary>
+    public ExportStatus Status
+    {
+        get
+        {
+            var status = _status;
+            return status.IsRunning && status.StartedAt is { } startedAt
+                ? status with { ElapsedSeconds = Math.Round((DateTimeOffset.UtcNow - startedAt).TotalSeconds, 1) }
+                : status;
+        }
+    }
 
     /// <summary>
     /// Starts an export in the background and returns its id at once, so the plugin page can follow the progress.
@@ -43,7 +57,7 @@ public sealed class InventoryExportService
 
         var generatedAt = DateTimeOffset.UtcNow;
         var exportId = _fileStore.CreateExportId(generatedAt);
-        SetStatus(true, exportId, "Preparing export", 0, 0, 0, null);
+        Begin(exportId, generatedAt, null);
         _ = Task.Run(async () =>
         {
             try
@@ -63,7 +77,10 @@ public sealed class InventoryExportService
         return exportId;
     }
 
-    public async Task<ExportHistoryEntry> RunExportAsync(ExportOptions options, CancellationToken cancellationToken)
+    /// <summary>
+    /// Runs an export and waits for it. The scheduled task passes <paramref name="progress"/>, so Jellyfin's task list shows the progress too.
+    /// </summary>
+    public async Task<ExportHistoryEntry> RunExportAsync(ExportOptions options, CancellationToken cancellationToken, IProgress<double>? progress = null)
     {
         if (!await _gate.WaitAsync(GateWait(), cancellationToken).ConfigureAwait(false))
         {
@@ -74,11 +91,12 @@ public sealed class InventoryExportService
         {
             var generatedAt = DateTimeOffset.UtcNow;
             var exportId = _fileStore.CreateExportId(generatedAt);
-            SetStatus(true, exportId, "Preparing export", 0, 0, 0, null);
+            Begin(exportId, generatedAt, progress);
             return await ExportAsync(options, generatedAt, exportId, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
+            _taskProgress = null;
             _gate.Release();
         }
     }
@@ -217,8 +235,21 @@ public sealed class InventoryExportService
         }
     }
 
+    private void Begin(string exportId, DateTimeOffset startedAt, IProgress<double>? progress)
+    {
+        _startedAt = startedAt;
+        _taskProgress = progress;
+        SetStatus(true, exportId, "Preparing export", 0, 0, 0, null);
+    }
+
     private void SetStatus(bool running, string exportId, string stage, double percent, int processed, int total, string? error)
     {
+        // Progress never goes backwards within one export, even when a library's item count changes during the scan.
+        if (running && _status.IsRunning && _status.ExportId == exportId)
+        {
+            percent = Math.Max(percent, _status.ProgressPercent);
+        }
+
         _status = new ExportStatus
         {
             IsRunning = running,
@@ -227,8 +258,11 @@ public sealed class InventoryExportService
             ProgressPercent = percent,
             ProcessedItems = processed,
             TotalItems = total,
+            StartedAt = _startedAt,
+            ElapsedSeconds = Math.Round((DateTimeOffset.UtcNow - _startedAt).TotalSeconds, 1),
             ErrorMessage = error
         };
+        _taskProgress?.Report(percent);
     }
 
     // Do not wait on an export that is still running, only on one that is about to release the gate.

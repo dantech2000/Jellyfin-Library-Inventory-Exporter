@@ -147,11 +147,19 @@ export class InventoryExporterApi {
     await this.client.post(`/Plugins/${PLUGIN_ID}/Configuration`, { ...(await this.config()), ...changes });
   }
 
-  /** Restores the default settings and deletes every export, so each test starts from a clean plugin. */
+  /** The Jellyfin scheduled task "Export library inventory". */
+  async scheduledTask(): Promise<any> {
+    const task = (await this.client.get<any[]>('/ScheduledTasks')).find(candidate => candidate.Key === 'LibraryInventoryExporter');
+    expect(task, 'the "Export library inventory" scheduled task').toBeTruthy();
+    return task;
+  }
+
+  /** Restores the default settings, removes any schedule, and deletes every export, so each test starts from a clean plugin. */
   async reset(): Promise<void> {
     await expect.poll(async () => (await this.status()).isRunning, { message: 'no export is running', timeout: 60_000 }).toBe(false);
     await this.deleteAllExports();
     await this.client.post(`/Plugins/${PLUGIN_ID}/Configuration`, DEFAULT_CONFIG);
+    await this.client.post(`/ScheduledTasks/${(await this.scheduledTask()).Id}/Triggers`, []);
     await this.deleteAllExports();
   }
 

@@ -1,7 +1,7 @@
 ---
 name: "Library Inventory Exporter"
 guid: "7184fe02-8e91-4fd2-9140-6d58d5e91f0a"
-version: "0.1.8"
+version: "0.1.9"
 owner: "dantech2000"
 repositoryName: "Library Inventory Exporter"
 repositoryUrl: "https://github.com/dantech2000/Jellyfin-Library-Inventory-Exporter"
@@ -16,8 +16,8 @@ artifacts:
   - "meta.json"
   - "library-inventory-exporter.png"
 changelog: >
-  Adds a build for Jellyfin 12.0. Fixes the plugin page, which did not show
-  output directories, libraries, or recent exports. Exports now include audio,
-  video, and subtitle stream details and user watch state, and downloads work
-  on Jellyfin 12.0. The plugin page explains every error, and exports no
-  longer leave an unzipped copy on disk.
+  Adds a progress bar that shows the stage, the percent, and the time left,
+  and a schedule section that links to the scheduled task. Makes exports with
+  user watch state much faster: a library of 49,500 items now exports in
+  9 seconds instead of 48. Adds a performance test suite, and publishes the
+  plugin under the GNU General Public License v3.0.

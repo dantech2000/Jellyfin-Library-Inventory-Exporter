@@ -23,8 +23,7 @@ public sealed class ExportInventoryTask : IScheduledTask
     public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
     {
         var options = _exportService.BuildOptionsFromConfiguration();
-        await _exportService.RunExportAsync(options, cancellationToken).ConfigureAwait(false);
-        progress.Report(100);
+        await _exportService.RunExportAsync(options, cancellationToken, progress).ConfigureAwait(false);
     }
 
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()

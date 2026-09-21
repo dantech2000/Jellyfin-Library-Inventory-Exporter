@@ -237,8 +237,47 @@
             progressPercent: statusValue(status, 'progressPercent', 'ProgressPercent', 0),
             processedItems: statusValue(status, 'processedItems', 'ProcessedItems', 0),
             totalItems: statusValue(status, 'totalItems', 'TotalItems', 0),
+            elapsedSeconds: statusValue(status, 'elapsedSeconds', 'ElapsedSeconds', 0),
             errorMessage: statusValue(status, 'errorMessage', 'ErrorMessage', '')
         };
+    }
+
+    function formatNumber(value) {
+        return Number(value || 0).toLocaleString();
+    }
+
+    function formatSize(bytes) {
+        const value = Number(bytes) || 0;
+        return value >= 1048576 ? `${(value / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(value / 1024))} KB`;
+    }
+
+    function formatDuration(seconds) {
+        const total = Math.max(0, Math.round(Number(seconds) || 0));
+        const minutes = Math.floor(total / 60);
+        const rest = String(total % 60).padStart(2, '0');
+        return minutes >= 60 ? `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${rest}` : `${minutes}:${rest}`;
+    }
+
+    // The estimate assumes the rest of the export runs at the speed so far, so it waits for a few percent of progress.
+    function describeTiming(status, percent) {
+        const elapsed = Number(status.elapsedSeconds) || 0;
+        if (!status.isRunning) {
+            return status.stage === 'Completed' && elapsed > 0 ? `Finished in ${formatDuration(elapsed)}` : '';
+        }
+
+        if (percent < 3 || elapsed < 2) {
+            return `Elapsed ${formatDuration(elapsed)}`;
+        }
+
+        const remaining = elapsed * (100 - percent) / percent;
+        let estimate = 'less than a minute left';
+        if (remaining >= 3600) {
+            estimate = `about ${Math.floor(remaining / 3600)} h ${Math.round((remaining % 3600) / 60)} min left`;
+        } else if (remaining >= 60) {
+            estimate = `about ${Math.ceil(remaining / 60)} min left`;
+        }
+
+        return `Elapsed ${formatDuration(elapsed)} · ${estimate}`;
     }
 
     function renderProgress(rawStatus) {
@@ -260,10 +299,54 @@
         if (status.errorMessage) {
             page().querySelector('#exportProgressDetails').innerText = status.errorMessage;
         } else if (total > 0) {
-            page().querySelector('#exportProgressDetails').innerText = `${processed} of ${total} items processed`;
+            page().querySelector('#exportProgressDetails').innerText = `${formatNumber(processed)} of ${formatNumber(total)} items processed`;
         } else {
             page().querySelector('#exportProgressDetails').innerText = status.isRunning ? 'Export in progress' : '';
         }
+
+        page().querySelector('#exportProgressTiming').innerText = describeTiming(status, percent);
+    }
+
+    function formatTimeOfDay(ticks) {
+        const minutes = Math.round(Number(ticks || 0) / 600000000);
+        return `${String(Math.floor(minutes / 60) % 24).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+    }
+
+    function describeTrigger(trigger) {
+        switch (trigger.type) {
+            case 'DailyTrigger':
+                return `Every day at ${formatTimeOfDay(trigger.timeOfDayTicks)}.`;
+            case 'WeeklyTrigger':
+                return `Every ${trigger.dayOfWeek} at ${formatTimeOfDay(trigger.timeOfDayTicks)}.`;
+            case 'IntervalTrigger': {
+                const hours = Number(trigger.intervalTicks || 0) / 36000000000;
+                if (hours < 1) {
+                    return `Every ${Math.round(hours * 60)} minutes.`;
+                }
+
+                return hours === 1 ? 'Every hour.' : `Every ${formatNumber(hours)} hours.`;
+            }
+            case 'StartupTrigger':
+                return 'When Jellyfin starts.';
+            default:
+                return '';
+        }
+    }
+
+    // The export runs on demand until an administrator adds triggers to the "Export library inventory" task.
+    function refreshSchedule() {
+        return getJson('ScheduledTasks').then(tasks => {
+            const task = (tasks || []).find(candidate => candidate.key === 'LibraryInventoryExporter');
+            const text = page().querySelector('#exportScheduleText');
+            if (!task) {
+                text.innerText = 'The "Export library inventory" task is missing. Restart Jellyfin to register it.';
+                return;
+            }
+
+            const triggers = (task.triggers || []).map(describeTrigger).filter(description => description);
+            text.innerText = triggers.length === 0 ? 'Exports run only when you click Run Export Now.' : triggers.join(' ');
+            page().querySelector('#exportScheduleLink').setAttribute('href', `#/dashboard/tasks/${task.id}`);
+        }, error => reportError('Could not load the schedule', error));
     }
 
     // Toasts only for exports started or seen running on this page. A failed export also stays in the error panel,
@@ -303,9 +386,6 @@
 
         maybeNotifyExportFinished(status);
 
-        const percent = clampPercent(status.progressPercent);
-        const statusText = `${status.stage} ${percent}%`;
-        page().querySelector('#exportStatus').innerText = status.errorMessage ? `${statusText}: ${status.errorMessage}` : statusText;
         setExportButtonRunning(status.isRunning === true);
 
         if (status.isRunning) {
@@ -326,7 +406,7 @@
 
     function scheduleStatusRefresh() {
         clearStatusRefresh();
-        statusTimer = setTimeout(refreshStatus, 2000);
+        statusTimer = setTimeout(refreshStatus, 1000);
     }
 
     function scheduleInitialStatusRefresh() {
@@ -348,7 +428,7 @@
         return getJson('InventoryExporter/Exports').then(exports => {
             page().querySelector('#exportHistory').innerHTML = exports.length === 0
                 ? '<p>No exports yet.</p>'
-                : exports.map(item => `<p><a href="${getDownloadUrl('InventoryExporter/Exports/' + item.id + '/Download')}">${escapeHtml(item.fileName)}</a> ${escapeHtml(item.itemCount)} items <button is="emby-button" type="button" data-delete-export="${escapeHtml(item.id)}">Delete</button></p>`).join('');
+                : exports.map(item => `<p><a href="${getDownloadUrl('InventoryExporter/Exports/' + item.id + '/Download')}">${escapeHtml(item.fileName)}</a> · ${formatNumber(item.itemCount)} items · ${formatSize(item.sizeBytes)} <button is="emby-button" type="button" class="raised" data-delete-export="${escapeHtml(item.id)}"><span>Delete</span></button></p>`).join('');
         }, error => reportError('Could not load the recent exports', error));
     }
 
@@ -362,6 +442,7 @@
             renderLibraries(libraries);
             updateLibraryPickerState();
         }, error => reportError('Could not load the libraries', error));
+        refreshSchedule();
         refreshStatus();
         refreshExports();
     }
@@ -420,7 +501,6 @@
                 const startStatus = normalizeStatus(camelCaseKeys(response || {}));
                 activeExportId = startStatus.exportId;
                 lastNotifiedExportId = '';
-                page().querySelector('#exportStatus').innerText = 'Starting export 0%';
                 renderProgress({ isRunning: true, exportId: activeExportId, stage: 'Starting export', progressPercent: 0 });
                 setExportButtonRunning(true);
                 showToast('Library inventory export started.');

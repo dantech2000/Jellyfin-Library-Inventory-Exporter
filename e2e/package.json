@@ -4,6 +4,7 @@
   "description": "Docker + Playwright end-to-end tests for the Library Inventory Exporter Jellyfin plugin",
   "scripts": {
     "test": "playwright test",
+    "perf": "playwright test --config playwright.perf.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 {
   "category": "General",
-  "changelog": "Adds a build for Jellyfin 12.0. Fixes the plugin page, which did not show output directories, libraries, or recent exports. Exports now include audio, video, and subtitle stream details and user watch state, and downloads work on Jellyfin 12.0. The plugin page explains every error, and exports no longer leave an unzipped copy on disk.",
+  "changelog": "Adds a progress bar that shows the stage, the percent, and the time left, and a schedule section that links to the scheduled task. Makes exports with user watch state much faster: a library of 49,500 items now exports in 9 seconds instead of 48. Adds a performance test suite, and publishes the plugin under the GNU General Public License v3.0.",
   "description": "Export a readable inventory manifest of Jellyfin libraries, media files, metadata provider IDs, media streams, and optional user watch state.",
   "id": "7184fe02-8e91-4fd2-9140-6d58d5e91f0a",
   "name": "Library Inventory Exporter",
