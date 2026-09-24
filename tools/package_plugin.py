@@ -22,8 +22,8 @@ def main():
 
     with open(os.path.join(publish_dir, "meta.json"), encoding="utf-8") as handle:
         meta = json.load(handle)
-    if "@" in meta["version"] or "@" in meta["targetAbi"]:
-        sys.exit(f"{publish_dir}/meta.json still contains template tokens")
+    if any("@" in meta.get(key, "@") for key in ("guid", "version", "targetAbi")):
+        sys.exit(f"{publish_dir}/meta.json is missing guid, version or targetAbi, or still contains template tokens")
 
     os.makedirs(out_dir, exist_ok=True)
     zip_path = os.path.join(out_dir, f"{PACKAGE_NAME}_{meta['version']}.zip")

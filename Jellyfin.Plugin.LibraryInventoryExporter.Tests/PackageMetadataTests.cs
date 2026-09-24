@@ -223,7 +223,7 @@ public sealed class PackageMetadataTests
         Assert.True(File.Exists(imagePath));
         Assert.True(new FileInfo(imagePath).Length > 10_000);
         Assert.DoesNotContain("\"imagePath\"", metaJson);
-        Assert.Contains("\"id\": \"7184fe02-8e91-4fd2-9140-6d58d5e91f0a\"", metaJson);
+        Assert.DoesNotContain("\"id\"", metaJson);
     }
 
     [Fact]
@@ -232,6 +232,7 @@ public sealed class PackageMetadataTests
         var root = TestPaths.RepositoryRoot();
         var metaJson = File.ReadAllText(Path.Combine(root, "Jellyfin.Plugin.LibraryInventoryExporter", "meta.json"));
 
+        Assert.Contains("\"guid\": \"@PLUGIN_GUID@\"", metaJson);
         Assert.Contains("\"version\": \"@PLUGIN_VERSION@\"", metaJson);
         Assert.Contains("\"targetAbi\": \"@TARGET_ABI@\"", metaJson);
         Assert.Contains("\"autoUpdate\": true", metaJson);

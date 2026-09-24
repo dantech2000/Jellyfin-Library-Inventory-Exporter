@@ -11,7 +11,7 @@ ARG JELLYFIN_IMAGE=jellyfin/jellyfin:12.0
 # the Jellyfin image targets another one (see compose.platform.yaml).
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 WORKDIR /src
-COPY Directory.Build.props ./
+COPY Directory.Build.props build.yaml ./
 COPY Jellyfin.Plugin.LibraryInventoryExporter/Jellyfin.Plugin.LibraryInventoryExporter.csproj Jellyfin.Plugin.LibraryInventoryExporter/
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet restore Jellyfin.Plugin.LibraryInventoryExporter/Jellyfin.Plugin.LibraryInventoryExporter.csproj

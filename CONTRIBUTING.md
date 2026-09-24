@@ -130,7 +130,7 @@ The project is licensed under the [GNU General Public License v3.0](LICENSE). By
 
 ## Releases
 
-`<PluginVersion>` in `Directory.Build.props` holds the release version, for example `0.1.9`. Each build appends the revision of its Jellyfin line, so version `0.1.9` ships as `0.1.9.10` for Jellyfin 10.11 and `0.1.9.12` for Jellyfin 12.0.
+`<PluginVersion>` in `Directory.Build.props` holds the release version, for example `0.1.10`. Each build appends the revision of its Jellyfin line, so version `0.1.10` ships as `0.1.10.10` for Jellyfin 10.11 and `0.1.10.12` for Jellyfin 12.0.
 
 To publish a release:
 
@@ -140,8 +140,8 @@ To publish a release:
 4. Tag the merge commit and push the tag:
 
    ```bash
-   git tag v0.1.9
-   git push origin v0.1.9
+   git tag v0.1.10
+   git push origin v0.1.10
    ```
 
 The release workflow stops if the tag does not match `<PluginVersion>`. Otherwise it builds both zips, attaches them with their `.md5` checksums to the GitHub release, and uses the `build.yaml` changelog as the release notes. The manifest workflow then updates `manifest.json` on the `gh-pages` branch.
