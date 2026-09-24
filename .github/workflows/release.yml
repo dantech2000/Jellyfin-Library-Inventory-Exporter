@@ -47,6 +47,12 @@ jobs:
           python3 tools/package_plugin.py dist/publish/net9.0 dist/packages
           python3 tools/package_plugin.py dist/publish/net10.0 dist/packages
 
+      # Each zip must carry the build.yaml guid and its own Jellyfin line's targetAbi.
+      - name: Check packages
+        run: |
+          set -- dist/packages/*.10.zip; python3 tools/check_package.py build.yaml "$1" 10.11.0.0
+          set -- dist/packages/*.12.zip; python3 tools/check_package.py build.yaml "$1" 12.0.0.0
+
       # The manifest workflow uses the release notes as each catalog version's changelog.
       - name: Write release notes
         run: python3 -c 'import sys; sys.path.insert(0, "tools"); from generate_manifest import read_build; print(read_build("build.yaml")["changelog"].strip())' > dist/release-notes.md

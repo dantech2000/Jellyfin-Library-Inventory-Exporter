@@ -1,8 +1,8 @@
 {
   "category": "General",
-  "changelog": "Adds a progress bar that shows the stage, the percent, and the time left, and a schedule section that links to the scheduled task. Makes exports with user watch state much faster: a library of 49,500 items now exports in 9 seconds instead of 48. Adds a performance test suite, and publishes the plugin under the GNU General Public License v3.0.",
+  "changelog": "Fixes the plugin ID in the packaged meta.json, so Jellyfin no longer logs 'The manifest ID 00000000-0000-0000-0000-000000000000 did not match the package info ID' when it installs or updates the plugin.",
   "description": "Export a readable inventory manifest of Jellyfin libraries, media files, metadata provider IDs, media streams, and optional user watch state.",
-  "id": "7184fe02-8e91-4fd2-9140-6d58d5e91f0a",
+  "guid": "@PLUGIN_GUID@",
   "name": "Library Inventory Exporter",
   "overview": "Export Jellyfin library inventory to CSV and JSON.",
   "owner": "dantech2000",

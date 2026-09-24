@@ -32,12 +32,17 @@
   </ItemGroup>
 
   <!--
-    meta.json is a template. Jellyfin trusts the version and targetAbi in the packaged copy,
+    meta.json is a template. Jellyfin trusts the guid, version and targetAbi in the packaged copy,
     so every target framework writes its own resolved meta.json next to the plugin DLL.
+    The guid comes from build.yaml, which the plugin catalog manifest also reads.
   -->
   <Target Name="WritePluginMeta" AfterTargets="Build" Condition="'$(TargetFramework)' != ''">
     <PropertyGroup>
-      <PluginMetaJson>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/meta.json').Replace('@PLUGIN_VERSION@', '$(Version)').Replace('@TARGET_ABI@', '$(JellyfinTargetAbi)').TrimEnd())</PluginMetaJson>
+      <PluginGuid>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../build.yaml')), '(?m)(?&lt;=^guid:\s*")[0-9a-fA-F-]{36}(?=")').Value)</PluginGuid>
+    </PropertyGroup>
+    <Error Condition="'$(PluginGuid)' == ''" Text="build.yaml has no guid: &quot;...&quot; line" />
+    <PropertyGroup>
+      <PluginMetaJson>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/meta.json').Replace('@PLUGIN_GUID@', '$(PluginGuid)').Replace('@PLUGIN_VERSION@', '$(Version)').Replace('@TARGET_ABI@', '$(JellyfinTargetAbi)').TrimEnd())</PluginMetaJson>
     </PropertyGroup>
     <WriteLinesToFile File="$(OutDir)meta.json" Lines="$([MSBuild]::Escape($(PluginMetaJson)))" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>

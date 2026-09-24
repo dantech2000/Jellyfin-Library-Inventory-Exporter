@@ -22,8 +22,8 @@ Each release ships one build per Jellyfin server line:
 
 | Jellyfin server | Plugin build | targetAbi | .NET |
 | --- | --- | --- | --- |
-| 10.11.x | `0.1.9.10` | `10.11.0.0` | `net9.0` |
-| 12.0.x | `0.1.9.12` | `12.0.0.0` | `net10.0` |
+| 10.11.x | `0.1.10.10` | `10.11.0.0` | `net9.0` |
+| 12.0.x | `0.1.10.12` | `12.0.0.0` | `net10.0` |
 
 The last part of the plugin version names the server line. Jellyfin's catalog installs the highest version whose targetAbi the server supports, so each server gets the build made for it.
 
@@ -262,11 +262,11 @@ Copy the contents of `dist/plugin` into a Jellyfin plugin directory, for example
 Maintainers publish installable releases with a tag. The tag must match `<PluginVersion>` in `Directory.Build.props`:
 
 ```bash
-git tag v0.1.9
-git push origin v0.1.9
+git tag v0.1.10
+git push origin v0.1.10
 ```
 
-The release workflow builds the plugin for both server lines. It attaches `Jellyfin.Plugin.LibraryInventoryExporter_0.1.9.10.zip` (Jellyfin 10.11) and `Jellyfin.Plugin.LibraryInventoryExporter_0.1.9.12.zip` (Jellyfin 12.0) to the GitHub release, each with an `.md5` checksum, plus `build.yaml`. The release notes come from the `changelog` in `build.yaml`.
+The release workflow builds the plugin for both server lines. It attaches `Jellyfin.Plugin.LibraryInventoryExporter_0.1.10.10.zip` (Jellyfin 10.11) and `Jellyfin.Plugin.LibraryInventoryExporter_0.1.10.12.zip` (Jellyfin 12.0) to the GitHub release, each with an `.md5` checksum, plus `build.yaml`. The release notes come from the `changelog` in `build.yaml`.
 
 When the release is published, the manifest workflow writes `manifest.json` to the `gh-pages` branch. It adds one catalog version per zip and reads the version and targetAbi from the `meta.json` inside each zip. The raw GitHub URL above is the most direct Jellyfin repository URL. If GitHub Pages is enabled for the repository without a conflicting custom domain, the Pages URL can also be used.
 
